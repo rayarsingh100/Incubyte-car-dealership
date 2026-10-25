@@ -14,6 +14,16 @@ A full-stack dealership inventory application with customer purchasing, administ
 
 The public frontend, backend health endpoint, vehicle-list endpoint, and frontend-to-backend CORS preflight were checked on 2026-10-25. The frontend bundle’s API base points to the backend URL above. Hosting dashboard settings, current plan, sleep behavior, and data durability are not independently verified by those public requests.
 
+The application is branded **Motorline Automotive** in its customer and administrator UI; Incubyte Car Dealership is the assessment/project name.
+
+## Screenshots
+
+These captures show the current sign-in and customer registration screens. They contain no entered account details. Other available captures were left out because they show identifying-looking account/order information or viewer overlays; verify and sanitize those before sharing them.
+
+| Sign in | Create an account |
+| --- | --- |
+| ![Motorline sign-in page with email and password fields](docs/images/Login.png)<br>*Sign in to an existing dealership account.* | ![Motorline registration page with name, email, password, and confirmation fields](docs/images/Register.png)<br>*Create a customer account.* |
+
 ## Contents
 
 - [Overview](#overview)
@@ -29,6 +39,7 @@ The public frontend, backend health endpoint, vehicle-list endpoint, and fronten
 - [Testing and quality assurance](#testing-and-quality-assurance)
 - [Deployment](#deployment)
 - [Screenshots](#screenshots)
+- [Concept workflow illustration](#concept-workflow-illustration)
 - [AI-assisted development](#ai-assisted-development)
 - [Limitations and next steps](#limitations-and-next-steps)
 - [Contributing](#contributing)
@@ -38,7 +49,7 @@ The public frontend, backend health endpoint, vehicle-list endpoint, and fronten
 
 The application has two role-based experiences. Customers can browse the live inventory, complete a simulated demo payment, and view their own purchase history. Administrators can review inventory metrics, manage vehicles, and view customer orders. The React client talks to an Express JSON API; Prisma maps application records to PostgreSQL.
 
-The dashboard’s inventory totals and stock views are derived from API data. Its “Recent activity” entries are illustrative sample content, not a live activity feed. Vehicle image links are optional; the interface shows a fallback icon when a URL is missing or cannot load.
+The administrator dashboard’s inventory totals and stock views are derived from API data. Its “Recent activity” panel currently has no activity feed and displays “No activity data is available.” Vehicle image links are optional; the interface shows a fallback icon when a URL is missing or cannot load.
 
 ## Capabilities
 
@@ -89,19 +100,22 @@ The dashboard’s inventory totals and stock views are derived from API data. It
 
 ```mermaid
 flowchart LR
-    Browser[Browser: React + Vite build] -->|HTTPS JSON, Bearer JWT| API[Express API]
-    Browser --> AuthState[Auth context and tab session]
-    AuthState --> Browser
-    API --> CORS[Exact-origin CORS]
-    CORS --> Routes[Auth, vehicle, purchase routes]
-    Routes --> Auth[JWT authentication middleware]
-    Auth --> Role[Admin role check where required]
-    Role --> Controllers[Controllers and validation]
+    Browser[Browser: React + Vite SPA] --> Client[API client]
+    Browser --> Session[Auth context and sessionStorage]
+    Client --> Middleware[Express app: trusted proxy config, CORS, JSON parser]
+    Middleware --> Public[Public routes: health, readiness, register/login, vehicle reads]
+    Middleware --> Protected[Protected routes: JWT authentication loads current user and role]
+    Protected --> Purchase[Purchase and purchase-history handlers: authenticated customer or admin]
+    Protected --> Admin[Vehicle writes and restock: admin role required]
+    Public --> Controllers[Route-specific controllers and validation]
+    Purchase --> Controllers
+    Admin --> Controllers
     Controllers --> Prisma[Prisma Client]
-    Prisma --> DB[(Neon PostgreSQL)]
+    Public -->|readiness check only| Prisma
+    Prisma --> DB[(PostgreSQL via DATABASE_URL)]
 ```
 
-The backend serves `/api/health` as a liveness check without querying PostgreSQL. `/api/ready` runs a read-only `SELECT 1` and reports whether the database responds. CORS restricts browser access to the configured exact origin; it is not the authorization boundary.
+The frontend is a single-page app: section selection is held in React state, while the login/register view uses the URL hash; there is no client-side route library. The diagram separates public endpoints from routes that authenticate a bearer token. Admin-only vehicle mutations add a role check, while purchase endpoints accept any authenticated user and scope purchase history by role. `/api/health` does not query the database; `/api/ready` performs a read-only `SELECT 1`. CORS restricts browser access to the configured exact origin but is not the authorization boundary. The application connects to PostgreSQL using `DATABASE_URL`; Neon is the documented hosted deployment target, not a hardcoded application dependency.
 
 ## Repository structure
 
@@ -226,6 +240,8 @@ All endpoints are under `/api`, return JSON, and use errors shaped as `{ "error"
 
 Vehicle listing defaults to page 1 and 20 records per page (maximum 100). The API returns `{ vehicles, pagination: { page, limit, total, pages } }`. Purchase history uses the same pagination shape; each record includes its purchase-time unit price, quantity, creation time, computed total, payment status/method when available, and safe vehicle summary. Administrator responses additionally include the buyer's name and email.
 
+Purchase requests accept `quantity` and optional `demoPaymentOutcome`: `success` (the default), `failure`, or `cancelled`. This is a deterministic demo simulation; no card details or real payments are processed. Failure and cancellation create no purchase and do not change stock. Success records `SUCCEEDED` / `DEMO_CARD` and decrements stock in the same database transaction.
+
 ## Data model
 
 The Prisma schema defines three models:
@@ -285,9 +301,11 @@ Apply Prisma migrations only as a deliberate release step after verifying the Ne
 
 The deployment preflight and smoke scripts are available as `npm run preflight:deploy` and `npm run smoke:deploy` from `backend/`. The smoke script is designed for health/readiness and read-only routes, optional CORS preflight, and optional single-account login; it does not register users or mutate inventory.
 
-## Screenshots
+## Concept workflow illustration
 
-No genuine application screenshots are included in the repository. Add authentic desktop and mobile captures here when available; no illustrative images are presented as screenshots.
+> **Concept illustration only — not a representation of implemented screens or data.** The legacy image below depicts a vehicle-details page, a cart, dashboard revenue/user metrics, and a `Cart Items` database model. Those features are not implemented. In the application, customers browse vehicle cards and purchase through a demo-payment modal; the admin dashboard reports inventory metrics; and the database has only `User`, `Vehicle`, and `Purchase` models. Use the source-based architecture diagram above and the captions on the genuine UI captures as implementation evidence.
+
+![Conceptual dealership workflow illustration; depicted cart, vehicle-details screen, revenue/user metrics, and Cart Items model are not implemented](docs/images/Website Workflow.png)
 
 ## My AI Usage
 
