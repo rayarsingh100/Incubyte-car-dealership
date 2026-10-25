@@ -61,6 +61,18 @@ The following is a setup checklist only. No Render or Neon resources have been c
 1. **Create an isolated Neon demo project after approval.** Use a new project and database reserved for this application (for example, database name `dealership_demo`). Do not use local `dealership_db` or another existing application database. In the Neon dashboard, verify the project, branch, and database name before copying its connection URL. Store the URL privately.
 2. **Apply migrations manually to Neon before deploying the services.** Render's free web service does not provide a pre-deploy command. From `backend/` in a trusted Bash terminal, install dependencies with `npm ci`, then run the following. It prompts for the URL without echoing it, checks that the target is Neon and that its database name matches the dashboard value you enter, then runs only the checked-in deployment migrations. The subshell keeps the URL out of the parent shell environment; Prisma's dotenv loading does not override the explicitly exported value.
 
+   Before running it for the production branch, verify the project, branch, and database in the Neon dashboard. A read-only column check for the manually added vehicle image column is:
+
+   ```sql
+   SELECT data_type, is_nullable
+   FROM information_schema.columns
+   WHERE table_schema = 'public'
+     AND table_name = 'Vehicle'
+     AND column_name = 'imageUrl';
+   ```
+
+   The `20261025000000_add_vehicle_image_url` migration adds the nullable `TEXT` column when absent. If the manually created column is already nullable `TEXT`, it leaves that column intact while Prisma records the migration. If the existing column has a different type or nullability, the migration aborts; stop and review rather than altering the production schema manually.
+
    ```bash
    cd ~/projects/incubyte-car-dealership/backend
    npm ci
@@ -116,7 +128,7 @@ Example registration body: `{ "name": "Sam Driver", "email": "sam@example.com", 
 
 Purchase history accepts `page` (default 1) and `limit` (default 20, maximum 100). It always filters by the authenticated user's ID and orders records by `createdAt` descending, then `id` descending. Each item contains the purchase `id`, `vehicleId`, `quantity`, `unitPrice`, and `createdAt`, a computed `totalAmount`, and the vehicle's `id`, `make`, `model`, and `category`. It does not return user records or password data. Missing, invalid, and expired bearer tokens return `401`.
 
-Vehicle create requires exactly these fields: `make`, `model`, `category`, `price`, and `quantity`. Patch accepts one or more of the same fields; unknown fields are rejected. `make`, `model`, and `category` must be strings, are trimmed, and must contain 1–100 characters. `price` must be a JSON number greater than zero, no greater than `9999999999.99`, with at most two decimal places. Create/update `quantity` must be an integer from 0 through `2147483647`; purchase/restock `quantity` must be an integer from 1 through `2147483647`, and total stock cannot exceed `2147483647`. IDs must be UUIDs.
+Vehicle create requires `make`, `model`, `category`, `price`, and `quantity`; optional `imageUrl` may be an HTTP/HTTPS URL up to 2,048 characters or `null`. Patch accepts one or more of those fields; `imageUrl: null` clears the image. Unknown fields are rejected. `make`, `model`, and `category` must be strings, are trimmed, and must contain 1–100 characters. `price` must be a JSON number greater than zero, no greater than `9999999999.99`, with at most two decimal places. Create/update `quantity` must be an integer from 0 through `2147483647`; purchase/restock `quantity` must be an integer from 1 through `2147483647`, and total stock cannot exceed `2147483647`. IDs must be UUIDs.
 
 For admin testing, use the guarded integration suite on a separate disposable `dealership_*_test` database. It registers unique test accounts and elevates only its newly registered test account inside that database. Do not change the role of an existing development account. After the run, it deletes only purchases, vehicles, and users identified as fixtures created by that run; it never resets or truncates tables.
 

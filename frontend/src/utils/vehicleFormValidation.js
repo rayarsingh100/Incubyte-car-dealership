@@ -1,5 +1,18 @@
 export const MAX_VEHICLE_PRICE = 9999999999.99;
 export const MAX_VEHICLE_QUANTITY = 2147483647;
+const MAX_IMAGE_URL_LENGTH = 2048;
+
+function isValidImageUrl(value) {
+  if (!value) return true;
+  if (value.length > MAX_IMAGE_URL_LENGTH) return false;
+
+  try {
+    const parsedUrl = new URL(value);
+    return ["http:", "https:"].includes(parsedUrl.protocol) && Boolean(parsedUrl.hostname) && !parsedUrl.username && !parsedUrl.password;
+  } catch {
+    return false;
+  }
+}
 
 export function validateVehicleFields(fields) {
   const errors = {};
@@ -11,6 +24,11 @@ export function validateVehicleFields(fields) {
     } else if (value.length > 100) {
       errors[name] = "Use 100 characters or fewer.";
     }
+  }
+
+  const imageUrl = fields.imageUrl.trim();
+  if (imageUrl && !isValidImageUrl(imageUrl)) {
+    errors.imageUrl = "Enter a valid HTTP or HTTPS image URL, up to 2,048 characters, or leave it blank.";
   }
 
   const price = fields.price.trim();
@@ -35,6 +53,7 @@ export function normalizeVehicleFields(fields) {
     make: fields.make.trim(),
     model: fields.model.trim(),
     category: fields.category.trim(),
+    imageUrl: fields.imageUrl.trim() || null,
     price: Number(fields.price),
     quantity: Number(fields.quantity),
   };

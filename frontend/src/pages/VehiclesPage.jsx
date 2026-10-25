@@ -3,6 +3,7 @@ import Icon from "../components/Icon.jsx";
 import VehicleFormModal from "../components/VehicleFormModal.jsx";
 import RestockVehicleModal from "../components/RestockVehicleModal.jsx";
 import VehicleStatusBadge from "../components/VehicleStatusBadge.jsx";
+import VehicleImage from "../components/VehicleImage.jsx";
 import { formatCurrency, formatNumber } from "../utils/formatters.js";
 import { filterInventory, getAvailability } from "../utils/vehicleInventory.js";
 import { getApiErrorMessage } from "../utils/apiErrorMessages.js";
@@ -65,9 +66,7 @@ function VehicleTable({ vehicles, totalInventoryCount, hasFilters, onClearFilter
               <tr key={vehicle.id} className="transition-colors hover:bg-slate-50/70">
                 <th scope="row" className="px-5 py-4 font-normal">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-                      <Icon name="vehicles" className="h-[18px] w-[18px]" />
-                    </span>
+                    <VehicleImage imageUrl={vehicle.imageUrl} alt={`${vehicle.make} ${vehicle.model}`} className="h-10 w-10 shrink-0 rounded-xl" />
                     <span className="min-w-0">
                       <span className="block whitespace-nowrap text-xs font-semibold text-slate-800">{vehicle.model}</span>
                       <span className="mt-1 block text-[10px] text-slate-500">{vehicle.make} {vehicle.model}</span>

@@ -14,7 +14,23 @@ function normalizeVehicle(vehicle) {
     throw new ApiError("The API returned vehicle data in an unexpected format.");
   }
 
-  return { ...vehicle, price: Number(vehicle.price) };
+  if (vehicle.imageUrl !== null && vehicle.imageUrl !== undefined && typeof vehicle.imageUrl !== "string") {
+    throw new ApiError("The API returned vehicle image data in an unexpected format.");
+  }
+
+  let imageUrl = null;
+  if (typeof vehicle.imageUrl === "string") {
+    try {
+      const parsedUrl = new URL(vehicle.imageUrl);
+      if (vehicle.imageUrl.length <= 2048 && ["http:", "https:"].includes(parsedUrl.protocol) && parsedUrl.hostname && !parsedUrl.username && !parsedUrl.password) {
+        imageUrl = vehicle.imageUrl;
+      }
+    } catch {
+      // Invalid links from manually inserted or legacy rows are rendered as the normal image fallback.
+    }
+  }
+
+  return { ...vehicle, imageUrl, price: Number(vehicle.price) };
 }
 
 export async function listVehicles(token) {

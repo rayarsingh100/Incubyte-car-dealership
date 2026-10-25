@@ -3,7 +3,7 @@ import Icon from "./Icon.jsx";
 import { normalizeVehicleFields, validateVehicleFields } from "../utils/vehicleFormValidation.js";
 import { getApiErrorMessage } from "../utils/apiErrorMessages.js";
 
-const blankFields = { make: "", model: "", category: "", price: "", quantity: "" };
+const blankFields = { make: "", model: "", category: "", price: "", quantity: "", imageUrl: "" };
 
 function getInitialFields(vehicle) {
   if (!vehicle) return blankFields;
@@ -12,6 +12,7 @@ function getInitialFields(vehicle) {
     make: vehicle.make,
     model: vehicle.model,
     category: vehicle.category,
+    imageUrl: vehicle.imageUrl || "",
     price: String(vehicle.price),
     quantity: String(vehicle.quantity),
   };
@@ -21,6 +22,7 @@ const fields = [
   { name: "make", label: "Brand", placeholder: "e.g. Toyota", type: "text", autoComplete: "off" },
   { name: "model", label: "Model / name", placeholder: "e.g. Camry", type: "text", autoComplete: "off" },
   { name: "category", label: "Category", placeholder: "e.g. Sedan", type: "text", autoComplete: "off" },
+  { name: "imageUrl", label: "Image URL (optional)", placeholder: "https://example.com/vehicle.jpg", type: "url", inputMode: "url", autoComplete: "url" },
   { name: "price", label: "Price (USD)", placeholder: "e.g. 28995.00", type: "text", inputMode: "decimal", autoComplete: "off" },
   { name: "quantity", label: "Stock quantity", placeholder: "e.g. 12", type: "text", inputMode: "numeric", autoComplete: "off" },
 ];
@@ -159,7 +161,7 @@ export default function VehicleFormModal({ vehicle, onSave, onClose, onSaved }) 
             {fields.map((field) => {
               const error = errors[field.name];
               const id = `vehicle-${field.name}`;
-              const isWide = field.name === "category";
+              const isWide = field.name === "category" || field.name === "imageUrl";
               return (
                 <div key={field.name} className={isWide ? "sm:col-span-2" : ""}>
                   <label htmlFor={id} className="mb-1.5 block text-[11px] font-semibold text-slate-700">
@@ -171,7 +173,7 @@ export default function VehicleFormModal({ vehicle, onSave, onClose, onSaved }) 
                     type={field.type}
                     inputMode={field.inputMode}
                     autoComplete={field.autoComplete}
-                    maxLength={field.name === "price" || field.name === "quantity" ? undefined : 100}
+                    maxLength={field.name === "imageUrl" ? 2048 : field.name === "price" || field.name === "quantity" ? undefined : 100}
                     value={values[field.name]}
                     placeholder={field.placeholder}
                     aria-invalid={Boolean(error)}
@@ -193,6 +195,7 @@ export default function VehicleFormModal({ vehicle, onSave, onClose, onSaved }) 
 
           <div className="mt-6 rounded-xl bg-slate-50 px-3.5 py-3 text-[11px] leading-5 text-slate-500">
             Price must be greater than $0 with up to two decimal places. Stock must be a whole number of 0 or more.
+            <span className="mt-1 block">Image links must use HTTP or HTTPS and point directly to a public image. The site shows a fallback if the image cannot load.</span>
           </div>
 
           <div className="mt-6 flex flex-col-reverse gap-2 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">

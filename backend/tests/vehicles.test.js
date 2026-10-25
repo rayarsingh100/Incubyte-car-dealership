@@ -68,6 +68,58 @@ describe("vehicle inventory", () => {
     expect((await request(app).get(`/api/vehicles/${id}`)).status).toBe(404);
   });
 
+  test("accepts valid optional image URLs on create and update, including clearing an image", async () => {
+    const imageUrl = "https://images.example.test/cars/toyota.jpg";
+    const created = await createVehicle(adminToken, { ...vehicleData, imageUrl });
+
+    expect(created.status).toBe(201);
+    expect(created.body.vehicle.imageUrl).toBe(imageUrl);
+    expect(prisma.getVehicle(created.body.vehicle.id).imageUrl).toBe(imageUrl);
+    expect((await request(app).get(`/api/vehicles/${created.body.vehicle.id}`)).body.vehicle.imageUrl).toBe(imageUrl);
+    const listResponse = await request(app).get("/api/vehicles?search=Toyota");
+    expect(listResponse.body.vehicles.find((vehicle) => vehicle.id === created.body.vehicle.id).imageUrl).toBe(imageUrl);
+
+    const updatedUrl = "http://images.example.test/cars/updated.png";
+    const updated = await request(app)
+      .patch(`/api/vehicles/${created.body.vehicle.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ imageUrl: updatedUrl });
+    expect(updated.status).toBe(200);
+    expect(updated.body.vehicle.imageUrl).toBe(updatedUrl);
+
+    const invalidUpdate = await request(app)
+      .patch(`/api/vehicles/${created.body.vehicle.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ imageUrl: "data:image/png;base64,not-a-valid-source" });
+    expect(invalidUpdate.status).toBe(400);
+
+    const cleared = await request(app)
+      .patch(`/api/vehicles/${created.body.vehicle.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ imageUrl: null });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.vehicle.imageUrl).toBeNull();
+  });
+
+  test.each([
+    "javascript:alert(1)",
+    "ftp://images.example.test/car.jpg",
+    "https://user:password@images.example.test/car.jpg",
+    "https://",
+    "not-a-url",
+    `https://images.example.test/${"a".repeat(2050)}`,
+  ])("rejects invalid image URL %s", async (imageUrl) => {
+    const response = await createVehicle(adminToken, { ...vehicleData, imageUrl });
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("INVALID_INPUT");
+  });
+
+  test("rejects unknown vehicle fields instead of passing them through to Prisma", async () => {
+    const response = await createVehicle(adminToken, { ...vehicleData, imageUrl: null, admin: true });
+    expect(response.status).toBe(400);
+    expect(prisma.vehicle.create).not.toHaveBeenCalled();
+  });
+
   test("rejects invalid data, invalid IDs, and missing vehicles", async () => {
     expect((await createVehicle(adminToken, { ...vehicleData, price: 0 })).status).toBe(400);
     expect((await request(app).get("/api/vehicles/not-an-id")).status).toBe(400);

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import Icon from "../components/Icon.jsx";
 import PurchaseVehicleModal from "../components/PurchaseVehicleModal.jsx";
+import VehicleImage from "../components/VehicleImage.jsx";
 import VehicleStatusBadge from "../components/VehicleStatusBadge.jsx";
 import { formatNumber, formatPreciseCurrency } from "../utils/formatters.js";
 import { filterInventory } from "../utils/vehicleInventory.js";
@@ -113,6 +114,7 @@ export default function CustomerHomePage({ user, vehicles, isLoading, inventoryE
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filteredVehicles.map((vehicle) => (
                 <article key={vehicle.id} className="flex flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.025)]">
+                  <VehicleImage imageUrl={vehicle.imageUrl} alt={`${vehicle.make} ${vehicle.model}`} className="h-44 w-full rounded-xl" />
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-[10px] font-semibold tracking-[0.12em] text-slate-500 uppercase">{vehicle.make}</p>

@@ -2,7 +2,31 @@ const prisma = require("../lib/prisma");
 const { HttpError } = require("../lib/errors");
 const { requireVehicleId, requiredText, validatePrice, validateQuantity, parsePositiveInteger } = require("../lib/validation");
 
-const vehicleFields = ["make", "model", "category", "price", "quantity"];
+const requiredVehicleFields = ["make", "model", "category", "price", "quantity"];
+const vehicleFields = [...requiredVehicleFields, "imageUrl"];
+
+const validateImageUrl = (value) => {
+  if (value === null) return null;
+  if (typeof value !== "string") {
+    throw new HttpError(400, "INVALID_INPUT", "imageUrl must be an HTTP or HTTPS URL, or null.");
+  }
+
+  const imageUrl = value.trim();
+  if (!imageUrl || imageUrl.length > 2048) {
+    throw new HttpError(400, "INVALID_INPUT", "imageUrl must be a non-empty URL of at most 2048 characters, or null.");
+  }
+
+  try {
+    const parsedUrl = new URL(imageUrl);
+    if (!["http:", "https:"].includes(parsedUrl.protocol) || !parsedUrl.hostname || parsedUrl.username || parsedUrl.password) {
+      throw new Error("Invalid image URL.");
+    }
+  } catch {
+    throw new HttpError(400, "INVALID_INPUT", "imageUrl must be a valid HTTP or HTTPS URL, or null.");
+  }
+
+  return imageUrl;
+};
 
 const vehicleData = (body, partial) => {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -10,9 +34,9 @@ const vehicleData = (body, partial) => {
   }
   const keys = Object.keys(body);
   if (keys.some((key) => !vehicleFields.includes(key))) {
-    throw new HttpError(400, "INVALID_INPUT", "Only make, model, category, price, and quantity can be set.");
+    throw new HttpError(400, "INVALID_INPUT", "Only make, model, category, price, quantity, and imageUrl can be set.");
   }
-  if (!keys.length || (!partial && vehicleFields.some((key) => !keys.includes(key)))) {
+  if (!keys.length || (!partial && requiredVehicleFields.some((key) => !keys.includes(key)))) {
     throw new HttpError(400, "INVALID_INPUT", partial ? "At least one vehicle field is required." : "All vehicle fields are required.");
   }
   const data = {};
@@ -20,6 +44,7 @@ const vehicleData = (body, partial) => {
     if (["make", "model", "category"].includes(key)) data[key] = requiredText(body[key], key);
     if (key === "price") data.price = validatePrice(body.price);
     if (key === "quantity") data.quantity = validateQuantity(body.quantity, "quantity", true);
+    if (key === "imageUrl") data.imageUrl = validateImageUrl(body.imageUrl);
   }
   return data;
 };
