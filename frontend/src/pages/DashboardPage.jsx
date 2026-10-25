@@ -1,6 +1,6 @@
 import Icon from "../components/Icon.jsx";
 import MetricCard from "../components/MetricCard.jsx";
-import { sampleActivity, sampleInventory, summarizeInventory } from "../utils/dashboardMockData.js";
+import { sampleActivity, summarizeInventory } from "../utils/dashboardMockData.js";
 import { formatCurrency, formatNumber } from "../utils/formatters.js";
 
 const metrics = (summary) => [
@@ -62,9 +62,9 @@ function InventorySummary({ inventory }) {
         </span>
       </div>
 
-      {categoryRows.length === 0 ? (
+      {categoryRows.length === 0 || totalUnits === 0 ? (
         <div className="mt-7 rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
-          No sample inventory is available.
+          {categoryRows.length === 0 ? "No sample inventory is available." : "Vehicles are listed, but there are no units in stock."}
         </div>
       ) : (
         <>
@@ -177,8 +177,8 @@ function LowStockList({ inventory }) {
   );
 }
 
-export default function DashboardPage() {
-  const summary = summarizeInventory(sampleInventory);
+export default function DashboardPage({ vehicles }) {
+  const summary = summarizeInventory(vehicles);
 
   return (
     <div className="mx-auto max-w-[1240px]">
@@ -202,7 +202,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <InventorySummary inventory={sampleInventory} />
+        <InventorySummary inventory={vehicles} />
         <RecentActivity />
       </div>
 
@@ -219,8 +219,8 @@ export default function DashboardPage() {
             </span>
           </div>
           <div className="mt-5 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-            {sampleInventory.map((vehicle) => {
-              const width = Math.max(8, (vehicle.quantity / 12) * 100);
+            {vehicles.map((vehicle) => {
+              const width = Math.min(100, (vehicle.quantity / 12) * 100);
               return (
                 <div key={vehicle.id}>
                   <div className="mb-2 flex items-center justify-between gap-2">
@@ -238,7 +238,7 @@ export default function DashboardPage() {
             })}
           </div>
         </section>
-        <LowStockList inventory={sampleInventory} />
+        <LowStockList inventory={vehicles} />
       </div>
 
       <footer className="mt-8 flex flex-col justify-between gap-2 border-t border-slate-200/80 pt-5 text-[10px] text-slate-400 sm:flex-row sm:items-center">
