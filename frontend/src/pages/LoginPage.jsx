@@ -110,7 +110,6 @@ export default function LoginPage({ onLogin, onRegister, notice, initialEmail = 
           {isSubmitting ? "Signing in…" : "Sign in"}
         </button>
       </form>
-      <p className="mt-5 text-center text-[11px] leading-5 text-slate-400">Your session stays in this browser tab and is cleared when you sign out or reload.</p>
     </AuthPageLayout>
   );
 }

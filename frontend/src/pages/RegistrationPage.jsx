@@ -94,7 +94,6 @@ export default function RegistrationPage({ onRegistered, onLogin }) {
             </div>
           );
         })}
-        <p className="pt-1 text-[11px] leading-5 text-slate-500">Public sign-up creates a customer account. Account permissions are enforced by the server.</p>
         <button
           type="submit"
           disabled={isSubmitting}
