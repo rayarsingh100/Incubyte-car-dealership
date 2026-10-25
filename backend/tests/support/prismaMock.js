@@ -26,6 +26,7 @@ const duplicateError = () => Object.assign(new Error("Unique constraint failed")
 const missingError = () => Object.assign(new Error("Record not found"), { code: "P2025" });
 
 const prisma = {
+  $queryRaw: jest.fn(async () => [{ ready: 1 }]),
   user: {
     findUnique: jest.fn(async ({ where, select }) => selectFields(users.find((user) => matches(user, where)), select)),
     create: jest.fn(async ({ data, select }) => {
@@ -113,6 +114,7 @@ const prisma = {
       for (const method of Object.values(model)) if (method.mockClear) method.mockClear();
     }
     this.$transaction.mockClear();
+    this.$queryRaw.mockClear();
   },
   setRole(email, role) {
     const user = users.find((item) => item.email === email);
