@@ -1,94 +1,315 @@
 # Incubyte Car Dealership Inventory System
 
-Public repository: [github.com/rayarsingh100/Incubyte-car-dealership](https://github.com/rayarsingh100/Incubyte-car-dealership)
+A full-stack dealership inventory application with customer purchasing, administrator inventory management, authenticated purchase history, and vehicle image support.
 
-This project is a REST API for dealership accounts, vehicle inventory, and purchases. I completed the assessment backend under a two-day deadline while also managing college responsibilities.
+[![Node.js](https://img.shields.io/badge/Node.js-22-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)](https://expressjs.com/)
+[![Prisma](https://img.shields.io/badge/Prisma-6.19-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
-## Project overview
+**Repository:** [rayarsingh100/Incubyte-car-dealership](https://github.com/rayarsingh100/Incubyte-car-dealership)<br>
+**Live frontend:** [incubyte-car-dealership-2x0e.onrender.com](https://incubyte-car-dealership-2x0e.onrender.com)<br>
+**Backend API:** [incubyte-car-dealership-api.onrender.com](https://incubyte-car-dealership-api.onrender.com)
 
-- Register accounts and log in with bcrypt password hashing and JWT authentication.
-- List and view vehicles publicly, with pagination, search, and filters.
-- Restrict vehicle creation, updates, deletion, and restocking to administrators.
-- Allow authenticated purchases that decrement stock transactionally and prevent overselling.
-- Validate request data, return consistent JSON errors, and rate-limit login attempts.
-- Expose `GET /api/health` for a basic health check.
+The public frontend, backend health endpoint, vehicle-list endpoint, and frontend-to-backend CORS preflight were checked on 2026-10-25. The frontend bundle’s API base points to the backend URL above. Hosting dashboard settings, current plan, sleep behavior, and data durability are not independently verified by those public requests.
 
-## Tech stack and structure
+## Contents
 
-- Node.js and Express provide the HTTP API.
-- PostgreSQL stores accounts, vehicles, and purchases; Prisma 6.19.3 provides the schema, migrations, and client.
-- bcrypt hashes and checks account passwords. JWTs authenticate requests, while middleware checks the account's stored role for administrator-only routes.
-- Jest and Supertest run the mocked unit suite and the separate guarded PostgreSQL integration suite.
+- [Overview](#overview)
+- [Capabilities](#capabilities)
+- [Technology](#technology)
+- [Architecture](#architecture)
+- [Repository structure](#repository-structure)
+- [Run locally](#run-locally)
+- [Environment variables](#environment-variables)
+- [API reference](#api-reference)
+- [Data model](#data-model)
+- [Security](#security)
+- [Testing and quality assurance](#testing-and-quality-assurance)
+- [Deployment](#deployment)
+- [Screenshots](#screenshots)
+- [AI-assisted development](#ai-assisted-development)
+- [Limitations and next steps](#limitations-and-next-steps)
+- [Contributing](#contributing)
+- [License](#license)
 
-The API is organized into Express routes, controllers, middleware, validation and error helpers, and a Prisma client wrapper under `backend/src/`. The purchase controller conditionally decrements stock and creates the purchase record inside a Prisma transaction. The integration suite exercises insufficient stock, transaction rollback, and concurrent purchase attempts against PostgreSQL.
+## Overview
 
-See [backend/README.md](backend/README.md) for endpoint details, request examples, configuration, and database test safeguards.
+The application has two role-based experiences. Customers can browse the live inventory, purchase available stock, and view their own purchase history. Administrators can review inventory metrics and manage vehicles. The React client talks to an Express JSON API; Prisma maps application records to PostgreSQL.
 
-## Setup
+The dashboard’s inventory totals and stock views are derived from API data. Its “Recent activity” entries are illustrative sample content, not a live activity feed. Vehicle image links are optional; the interface shows a fallback icon when a URL is missing or cannot load.
 
-Requirements: Node.js 18.18 or newer and PostgreSQL.
+## Capabilities
 
-1. In a terminal, change to `backend/` and install packages with `npm install`.
-2. Copy `.env.example` to `.env`. Set `DATABASE_URL` for your PostgreSQL instance and replace the short `JWT_SECRET` placeholder with a randomly generated secret of at least 32 bytes. The server intentionally refuses to start with the example placeholder.
-3. Generate Prisma Client with `npm run db:generate`.
-4. Apply the checked-in migrations to the configured database with `npm run db:migrate`.
-5. Start the API with `npm start` (or `npm run dev` during development).
+### Customer
 
-The server loads `backend/.env`. Do not commit `.env` or share its values. Before running PostgreSQL integration tests, read the guarded database instructions in [backend/README.md](backend/README.md). The runner requires explicit target confirmation and does not reset or truncate tables.
+- Register a customer account and sign in.
+- Browse, search, and filter the API-backed vehicle inventory.
+- Purchase a positive quantity when stock is available.
+- See updated inventory after a successful purchase.
+- View paginated purchase history belonging to the signed-in account.
 
-## Verification results
+### Administrator
 
-The results below are dated verification snapshots. The newest safe checks and audit results are recorded in [backend/TEST_REPORT.md](backend/TEST_REPORT.md), alongside the earlier database integration run and its limitations.
+- View inventory totals, availability, low-stock items, and estimated inventory value.
+- Add, edit, delete, and restock vehicles.
+- Set an optional HTTP or HTTPS vehicle image URL.
+- Receive validation, authorization, stock-conflict, and API error feedback.
 
-### Bcrypt-fix verification snapshot — 2026-10-25
+### Inventory and purchasing
 
-| Command or check | Result |
+- Paginated vehicle listing with search and field filters.
+- Image URLs are optional and validated as HTTP/HTTPS URLs; URL syntax does not guarantee the remote resource is an image or remains available.
+- Purchases record the unit price at purchase time and decrement stock in a Prisma transaction.
+- Insufficient stock returns a conflict response; conditional stock updates protect against overselling.
+
+### Authentication and roles
+
+- Public registration creates `USER` accounts. There is no public admin-registration option.
+- The backend issues one-hour JWTs for login.
+- The frontend keeps the session in tab-scoped `sessionStorage`, restoring it after a page refresh and clearing it on logout or an API `401` response.
+- Admin-only UI is for usability; backend middleware enforces permissions.
+
+## Technology
+
+| Technology | Use in this project |
 | --- | --- |
-| `npm test -- --runInBand tests/auth.test.js` | Passed: 1 suite, 2 tests |
-| `npm test -- --runInBand` | Passed: 4 suites, 14 tests |
-| `npm run db:validate` | Passed: Prisma schema valid |
-| `npm ls prisma @prisma/config deepmerge-ts` | Prisma 6.19.3; scoped `deepmerge-ts@8.0.2` override resolved |
-| `npm audit --json` | Passed: 0 vulnerabilities reported |
-| `npx prisma migrate status` | Passed: 2 migrations found; schema up to date; no migrations applied during the check |
-| `git diff --check` | Passed |
+| React 19 | Customer and administrator interfaces, shared components, and auth context |
+| Vite 8 | Frontend development server and static production build |
+| Tailwind CSS 4 | Responsive styling and design utilities |
+| Node.js 22 | JavaScript runtime for backend and frontend build tooling |
+| Express 5 | REST endpoints, middleware, CORS, health checks, and error handling |
+| PostgreSQL | Relational storage for users, vehicles, and purchases |
+| Prisma 6.19.3 | Database schema, migrations, and typed database client |
+| Jest + Supertest | Backend unit tests with a Prisma mock and HTTP-level assertions |
+| Node.js built-in test runner | Focused frontend auth-session utility tests without another test dependency |
 
-Prisma Client generation passed in the earlier verification before the bcrypt-only change; it was not rerun for that change.
+## Architecture
 
-### Earlier PostgreSQL integration result — before the bcrypt login fix
+```mermaid
+flowchart LR
+    Browser[Browser: React + Vite build] -->|HTTPS JSON, Bearer JWT| API[Express API]
+    Browser --> AuthState[Auth context and tab session]
+    AuthState --> Browser
+    API --> CORS[Exact-origin CORS]
+    CORS --> Routes[Auth, vehicle, purchase routes]
+    Routes --> Auth[JWT authentication middleware]
+    Auth --> Role[Admin role check where required]
+    Role --> Controllers[Controllers and validation]
+    Controllers --> Prisma[Prisma Client]
+    Prisma --> DB[(Neon PostgreSQL)]
+```
 
-The guarded integration suite previously passed with 1 suite and 8 tests against the then-authorized local `dealership_db`. That historical run predates later fixes and left test records in that database. The current guard rejects `dealership_db`, and the integration suite now has fixture-specific cleanup. The updated suite has not yet been run against a dedicated disposable database.
+The backend serves `/api/health` as a liveness check without querying PostgreSQL. `/api/ready` runs a read-only `SELECT 1` and reports whether the database responds. CORS restricts browser access to the configured exact origin; it is not the authorization boundary.
 
-Unit tests use an in-memory Prisma mock and do not establish PostgreSQL behavior. Passing tests show the exercised scenarios passed; they do not prove the system is free of defects.
+## Repository structure
 
-## My AI-Assisted Development Journey
+```text
+.
+├── README.md
+├── backend/
+│   ├── prisma/
+│   │   ├── migrations/
+│   │   └── schema.prisma
+│   ├── scripts/                 # guarded test, deployment, and demo-admin tools
+│   ├── src/
+│   │   ├── config/              # JWT and trusted-proxy configuration
+│   │   ├── controllers/
+│   │   ├── lib/                 # Prisma, validation, and error helpers
+│   │   ├── middleware/          # auth, CORS, and login rate limit
+│   │   └── routes/
+│   ├── tests/                   # Jest unit tests and guarded integration suite
+│   ├── package.json
+│   └── TEST_REPORT.md
+└── frontend/
+    ├── public/
+    ├── src/
+    │   ├── components/
+    │   ├── context/
+    │   ├── hooks/
+    │   ├── layouts/
+    │   ├── pages/
+    │   ├── services/
+    │   ├── styles/
+    │   └── utils/
+    ├── tests/
+    └── package.json
+```
 
-I had two days to complete this assessment while managing my college responsibilities. Completing the backend manually in that period would have been difficult, so I used AI coding agents extensively to accelerate implementation. AI assistance was substantial; I do not present all of the code as manually written.
+## Run locally
 
-The project disclosure in [backend/PROMPTS.md](backend/PROMPTS.md) says AI assistance was used for backend API implementation based on requirements for authentication, vehicle inventory, purchases, stock safety, testing, and documentation. The workspace does not retain per-file authorship records, so I cannot reliably assign individual files or lines to me or an AI agent.
+Requirements: Node.js 22 (the frontend requires Node.js 20.19+ or 22.12+) and PostgreSQL. Run frontend and backend commands in separate terminals.
 
-My role was to inspect the resulting implementation, run tests, investigate failures, and validate selected security and database behaviors. The recorded work includes fixing a test runner issue that stopped integration testing before Jest ran, isolating unit tests from PostgreSQL with a Prisma mock, reviewing a dependency advisory and applying a scoped override, and checking schema and migration status. I also reported manual API smoke checks; the verification report labels those results as user-reported rather than independently rerun.
+### 1. Configure and start the backend
 
-### Example: bcrypt's 72-byte password boundary
+```bash
+cd backend
+npm ci
+cp .env.example .env
+```
 
-Registration already limited passwords by UTF-8 byte length, but login initially accepted any nonempty string. bcrypt uses only the first 72 UTF-8 bytes, so additional bytes are ignored. An 18-emoji password occupies 72 UTF-8 bytes despite having a shorter JavaScript string length. Appending one more character therefore reached bcrypt with 73 bytes and was accepted as the same credential.
+Edit `backend/.env` privately. Set `DATABASE_URL` to the intended local PostgreSQL database and generate a private `JWT_SECRET` with at least 32 random bytes. The server refuses to start when the JWT secret is missing or too short.
 
-I addressed this with a test-first change. The regression test registered the 72-byte password, appended one character during login, and expected `400 INVALID_INPUT` without calling `bcrypt.compare`. Before the application change, the test failed: login returned `200` and bcrypt comparison ran once. I then added a `Buffer.byteLength(password, "utf8") > 72` check before the database lookup and comparison. The focused auth suite passed with 2 tests, and the full unit suite passed with 14 tests afterward. The integration suite was not rerun for this input-validation change. This is evidence for one specific Red–Green cycle, not for project-wide TDD.
+Then generate the Prisma client and apply migrations to the database you have explicitly verified:
 
-### Security and correctness checks
+```bash
+npm run db:generate
+npm run db:migrate
+npm start
+```
 
-The source and recorded tests support these specific behaviors: public registration assigns the default `USER` role; authenticated requests verify JWTs and load the account's stored role; administrator routes reject regular users; purchases update stock and create purchase records transactionally; and the guarded integration runner requires an explicit test database target. The dependency audit reported zero vulnerabilities with the scoped Prisma dependency override. These checks cover selected behavior and do not amount to exhaustive security testing or a production deployment review.
+`npm run db:migrate` changes the configured database schema. Confirm the effective `DATABASE_URL` target before running it; do not point local setup or integration tests at a production or personal database unintentionally. The API listens on `PORT` (default `3000`) and binds to `0.0.0.0`.
 
-### Limitations and next improvements
+### 2. Configure and start the frontend
 
-- The historical integration result used `dealership_db` before later fixes. The updated guarded suite still needs a run against a separately verified dedicated disposable database.
-- Jest does not have dedicated tests for missing or short JWT configuration or startup refusal, although the application implements those checks.
-- The login rate limiter uses an in-memory per-process store. A multi-instance deployment needs a shared store and careful proxy configuration.
-- The available `backend/PROMPTS.md` is an AI-use summary, not raw session logs. Complete raw AI prompts and assistant-response logs were not found in the workspace. Recent prompts visible in this chat are not a complete project transcript.
-- No genuine application screenshots are available yet.
-- The existing Git history does not demonstrate frequent small commits or project-wide Red–Green–Refactor development. I will not claim that history shows a process it does not record.
+In a second terminal:
 
-With more time, I would add edge-case tests for JWT configuration and other input boundaries, run the full integration suite on an isolated disposable database after the final code change, capture genuine API screenshots, preserve authentic AI session logs if required, and perform deployment-specific configuration and security checks. I would use and record test-first cycles throughout future work rather than infer them afterward.
+```bash
+cd frontend
+npm ci
+cp .env.example .env
+npm run dev
+```
+
+The example uses `VITE_API_BASE_URL=/api`; Vite’s development-only proxy forwards `/api` to `http://127.0.0.1:3000`. For production, set the frontend’s build-time variable to the deployed backend URL ending in `/api`; the Vite proxy is not used in a production build.
+
+### 3. Optional administrator setup
+
+Public registration only creates `USER` accounts. For a separate demo database, the guarded `npm run provision:demo-admin` tool can create a new administrator after explicit target confirmation and hidden password entry. It will not promote an existing user. Read the complete safeguards in [backend/README.md](backend/README.md) before using it.
+
+## Environment variables
+
+Never commit `.env` files or put backend secrets in frontend build settings.
+
+| Variable | Service | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | Backend | PostgreSQL connection used by Prisma. |
+| `JWT_SECRET` | Backend | JWT signing secret; at least 32 random bytes. |
+| `PORT` | Backend | HTTP listener port; supplied by Render, defaults to `3000` locally. |
+| `FRONTEND_ORIGIN` | Backend | Exact HTTPS frontend origin for cross-origin browser requests; no path or trailing slash. |
+| `TRUST_PROXY_HOPS` | Backend | Optional integer from 1–5. Set only after verifying the host’s proxy chain. |
+| `LOGIN_RATE_LIMIT_WINDOW_MS` | Backend | Login limit window in milliseconds; defaults to 15 minutes. |
+| `LOGIN_RATE_LIMIT_MAX` | Backend | Login attempts per window and client IP; defaults to 5. |
+| `VITE_API_BASE_URL` | Frontend build | API base URL compiled into the browser bundle; `/api` for local Vite proxy, hosted HTTPS backend URL plus `/api` for Render. |
+| `TEST_DATABASE_URL` | Test runner only | Explicit local PostgreSQL test target; must not be an application or production database. |
+| `CONFIRM_TEST_DATABASE` | Test runner only | Exact database name confirmation required by the guarded integration runner. |
+| `TEST_JWT_SECRET` | Integration tests only | Test-only signing secret; never use in a deployed service. |
+| `DEMO_DATABASE_URL`, `CONFIRM_DEMO_HOST`, `CONFIRM_DEMO_DATABASE` | Admin provisioning only | Private target confirmation required by the one-time demo-admin CLI. |
+| `SMOKE_API_BASE_URL` | Deployment smoke script | Backend HTTPS `/api` URL for non-mutating deployment checks. |
+| `SMOKE_FRONTEND_ORIGIN` | Deployment smoke script | Optional exact frontend origin for CORS preflight checks. |
+| `SMOKE_TEST_EMAIL`, `SMOKE_TEST_PASSWORD` | Deployment smoke script | Optional dedicated demo account for a single login and read-only history check. |
+
+The deployment preflight also requires a verified `FRONTEND_ORIGIN` and `TRUST_PROXY_HOPS` for the separately hosted production frontend. Treat the checked-in `.env.example` files as templates, not production configuration; keep real values private.
+
+## API reference
+
+All endpoints are under `/api`, return JSON, and use errors shaped as `{ "error": { "code": "...", "message": "..." } }`. Authenticated requests use `Authorization: Bearer <JWT>`. Missing, invalid, or expired JWTs receive `401`; a regular user attempting an admin-only action receives `403`.
+
+| Method and path | Access | Behavior |
+| --- | --- | --- |
+| `POST /api/auth/register` | Public | Accepts `name`, `email`, and `password`; creates a `USER`; returns `201 { user }`. Duplicate email returns `409`. |
+| `POST /api/auth/login` | Public, rate limited | Accepts `email` and `password`; returns `200 { token, user }`; JWT expires after one hour. |
+| `GET /api/vehicles` | Public | Returns `200` with paginated inventory; supports `page`, `limit`, `search`, exact `make`/`model`/`category`, `minPrice`, `maxPrice`, and `inStock`. |
+| `GET /api/vehicles/:id` | Public | Returns `200 { vehicle }` or `404`. |
+| `POST /api/vehicles` | Admin | Creates a vehicle; requires `make`, `model`, `category`, `price`, `quantity`; optional `imageUrl` may be an HTTP(S) URL or `null`; returns `201 { vehicle }`. |
+| `PATCH /api/vehicles/:id` | Admin | Updates allowed vehicle fields and returns `200 { vehicle }`; `imageUrl: null` clears the image. Unknown fields are rejected. |
+| `DELETE /api/vehicles/:id` | Admin | Returns `200` after deletion; a vehicle with purchase history returns `409`. |
+| `POST /api/vehicles/:id/restock` | Admin | Accepts a positive integer `quantity`, increments stock, and returns `200 { vehicle }`. |
+| `POST /api/vehicles/:id/purchases` | Authenticated | Accepts a positive integer `quantity`; records purchase and stock update transactionally and returns `201`; insufficient stock returns `409`. |
+| `GET /api/purchases` | Authenticated | Returns `200` with only the caller’s history, newest first, and pagination (`page`, `limit`; maximum 100). |
+| `GET /api/health` | Public | Returns `200` liveness response; does not query the database. |
+| `GET /api/ready` | Public | Read-only database readiness check (`SELECT 1`); returns `200` or sanitized `503`. |
+
+Vehicle listing defaults to page 1 and 20 records per page (maximum 100). The API returns `{ vehicles, pagination: { page, limit, total, pages } }`. Purchase history uses the same pagination shape; each record includes its purchase-time unit price, quantity, creation time, computed total, and safe vehicle summary.
+
+## Data model
+
+The Prisma schema defines three models:
+
+| Model | Main fields | Relationships |
+| --- | --- | --- |
+| `User` | `id`, `name`, unique `email`, `passwordHash`, `role`, `createdAt` | One user can have many purchases. Role defaults to `USER`. |
+| `Vehicle` | `id`, `make`, `model`, `category`, nullable `imageUrl`, `price`, `quantity`, timestamps | One vehicle can appear in many purchases. |
+| `Purchase` | `id`, `userId`, `vehicleId`, `quantity`, purchase-time `unitPrice`, `createdAt` | Belongs to one user and one vehicle; indexed by owner/date and vehicle/date. |
+
+Relations use restrictive deletion: accounts and vehicles referenced by purchase history cannot be deleted. The image URL migration is checked in at `backend/prisma/migrations/20261025000000_add_vehicle_image_url/`.
+
+## Security
+
+- Passwords are hashed with bcrypt; password hashes are not returned from login or registration.
+- JWTs expire after one hour. Protected API routes verify the JWT and load the account role from PostgreSQL; the role supplied by a browser is not authoritative.
+- Registration cannot select an `ADMIN` role.
+- Admin-only vehicle writes are protected by server-side authentication and role middleware.
+- Request fields, quantities, prices, vehicle IDs, and image URL schemes are validated. Unknown vehicle fields are rejected.
+- Stock decrement and purchase insertion use one database transaction and conditional updates.
+- Login attempts are rate limited (default five per 15 minutes per process). Multi-instance hosting needs a shared limiter store for consistent global limits.
+- CORS permits only the configured exact frontend origin and the required methods/headers. It does not replace authentication or authorization.
+- The JWT is held in `sessionStorage`, which is accessible to JavaScript on the page; an HttpOnly-cookie design would reduce token exposure to XSS but would require a different backend/browser session contract. No refresh-token or server-side revocation endpoint is implemented.
+
+These are implementation notes, not a claim of exhaustive security testing.
+
+## Testing and quality assurance
+
+Commands below should be run from the named package directory. The latest safe verification recorded for this project passed on 2026-10-25.
+
+| Category | Command or check | Result and scope |
+| --- | --- | --- |
+| Backend unit/regression | `cd backend && npm run verify:safe` | Passed: 13 Jest suites, 61 tests. Tests use a Prisma mock; this command excludes PostgreSQL integration. |
+| Prisma | Included in `verify:safe`: `npm run db:validate` and `npm run db:generate` | Passed: schema validation and Prisma Client generation. No database connection is made. |
+| Syntax and frontend build | Included in `verify:safe` | Passed: listed backend `node --check` files and Vite production build. |
+| Frontend auth-session tests | `cd frontend && npm test -- --test-reporter=spec` | Passed: 3 Node test cases covering restore, invalid stored data, and logout clearing. |
+| Git whitespace | Included in `verify:safe`; also `git diff --check` | Passed in the recorded safe run. |
+| PostgreSQL integration | `cd backend && npm run test:integration` | Not verified against a dedicated disposable database. `TEST_REPORT.md` records a historical 1-suite/8-test run against a local development database before the stricter current guard; it is not evidence that the current guarded suite passes against an isolated target. |
+| Live read-only smoke checks | `GET /api/health`, `GET /api/vehicles?page=1&limit=100`, `OPTIONS /api/vehicles` with the frontend origin | Checked 2026-10-25: frontend and API health returned `200`, vehicle list returned `200` with 12 vehicles, and CORS preflight returned `204` for the configured frontend origin. No inventory writes were sent. |
+| Image delivery spot check | Headless Chrome requests for the 12 image URLs returned by the public API | Checked 2026-10-25: 12 image loads completed. This checks image delivery, not an authenticated end-to-end UI workflow. |
+| Auth API smoke | Earlier user-reported local checks | Registration `201`, login `200`, and a regular user’s admin-only vehicle write `403`; not independently rerun as part of the latest safe verification. |
+
+A Red–Green cycle is documented for the bcrypt 72-byte UTF-8 login boundary: a regression test first demonstrated the failing behavior, then the validation fix passed. This is evidence of that specific test-first change, not of project-wide TDD. Tests establish only the behaviors they exercise; they do not demonstrate that all defects or security issues are absent. See [backend/TEST_REPORT.md](backend/TEST_REPORT.md) for dated historical records and detailed limitations.
+
+## Deployment
+
+The observed deployment uses a Render static frontend, a Render Node.js API, and Neon PostgreSQL. The public URLs above and current frontend-to-backend routing were checked by read-only HTTP requests. The Render dashboard settings, current plan, proxy-hop count, backups, and data-retention guarantees are not independently visible from this repository; verify them in the host dashboards before treating this demo as durable production service.
+
+The repository’s documented Render settings are:
+
+| Service | Root | Build | Start / publish | Important configuration |
+| --- | --- | --- | --- | --- |
+| Backend Web Service | `backend` | `npm ci && npm run db:generate` | `npm start`; health check `/api/health` | `NODE_VERSION=22.22.0`, `DATABASE_URL`, private `JWT_SECRET`, `FRONTEND_ORIGIN=https://incubyte-car-dealership-2x0e.onrender.com`, and a verified `TRUST_PROXY_HOPS`; Render supplies `PORT`. |
+| Frontend Static Site | `frontend` | `npm ci && npm run build` | Publish `dist` | `NODE_VERSION=22.22.0`; build-time `VITE_API_BASE_URL=https://incubyte-car-dealership-api.onrender.com/api`. This value is public and compiled into the browser bundle. |
+
+Apply Prisma migrations only as a deliberate release step after verifying the Neon project, branch, and database target. The owner reports that the image URL migration is applied and Prisma reported the schema up to date; this README preparation did not connect to Neon or run migration commands. Never use an application database for destructive integration tests. Follow the target-confirmation and migration instructions in [backend/README.md](backend/README.md).
+
+The deployment preflight and smoke scripts are available as `npm run preflight:deploy` and `npm run smoke:deploy` from `backend/`. The smoke script is designed for health/readiness and read-only routes, optional CORS preflight, and optional single-account login; it does not register users or mutate inventory.
 
 ## Screenshots
 
-No genuine application screenshots were available in the workspace when this README was prepared. No screenshots are represented here; real captures can be added when available.
+No genuine application screenshots are included in the repository. Add authentic desktop and mobile captures here when available; no illustrative images are presented as screenshots.
+
+## AI-assisted development
+
+AI coding agents assisted substantially with implementation, test work, and documentation across the backend and frontend milestones. The two-day assessment deadline and concurrent college responsibilities were context for using that assistance. I reviewed changes, investigated reported failures, ran verification commands, and checked selected authentication, authorization, and database-safety behaviors. I do not claim to have manually written every line or to have checked every possible issue.
+
+The available [AI-use note](backend/PROMPTS.md) is a summary, not a complete raw transcript. Complete prompt and response logs were not available in the project workspace, so no transcript or public conversation link is claimed here. The repository history and recorded evidence support one explicit test-first bcrypt fix; they do not establish that the entire project followed TDD.
+
+## Limitations and next steps
+
+- Run the current database integration suite against a separately verified, dedicated disposable PostgreSQL database; do not reuse an application database.
+- Add repeatable browser-to-backend tests for customer and administrator workflows without relying on real customer data.
+- Consider an HttpOnly cookie-based session and CSRF protection if the threat model warrants the additional backend/CORS work.
+- Replace the in-memory login limiter with a shared store before horizontally scaling the API.
+- Confirm Render proxy trust, Neon backups/restore, connection limits, and retention policy before using the demo for durable business data.
+- Vehicle images are externally hosted URLs; image availability and content are not guaranteed by this application.
+- Add genuine screenshots and, if required by the assessment, preserve complete raw AI logs without editing them.
+
+## Contributing
+
+For a change, open a focused branch or pull request and describe the behavior affected. Run `npm run verify:safe` from `backend/` and `npm test -- --test-reporter=spec` from `frontend/`. Do not commit environment files or secrets. Only run database integration tests against a dedicated, explicitly confirmed test database.
+
+## License
+
+No root `LICENSE` file is present, so this repository does not specify a project license. The `ISC` metadata in the backend package manifest is package metadata and is not a substitute for a repository license file.
+
+---
+
+Built as an Incubyte assessment project to demonstrate a full-stack inventory and purchasing workflow, with explicit attention to role checks, stock consistency, and honest reporting of test coverage and limitations.
