@@ -1,3 +1,5 @@
+import { AUTH_SESSION_EXPIRED_EVENT } from "../utils/authSession.js";
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/+$/, "");
 
 export class ApiError extends Error {
@@ -38,6 +40,9 @@ export async function requestJson(path, { body, token, ...options } = {}) {
   }
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== "undefined") {
+      window.dispatchEvent(new Event(AUTH_SESSION_EXPIRED_EVENT));
+    }
     const apiError = payload?.error;
     throw new ApiError(
       typeof apiError?.message === "string" ? apiError.message : `The request failed (${response.status}). Please try again.`,
