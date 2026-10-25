@@ -9,10 +9,11 @@ A full-stack dealership inventory application with customer purchasing, administ
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
 **Repository:** [rayarsingh100/Incubyte-car-dealership](https://github.com/rayarsingh100/Incubyte-car-dealership)<br>
-**Live frontend:** [incubyte-car-dealership-2x0e.onrender.com](https://incubyte-car-dealership-2x0e.onrender.com)<br>
-**Backend API:** [incubyte-car-dealership-api.onrender.com](https://incubyte-car-dealership-api.onrender.com)
+**Frontend:** [https://incubyte-car-dealership-2x0e.onrender.com](https://incubyte-car-dealership-2x0e.onrender.com)<br>
+**Backend API base URL:** [https://incubyte-car-dealership-api.onrender.com](https://incubyte-car-dealership-api.onrender.com)<br>
+**Vehicles API endpoint (test the API):** [https://incubyte-car-dealership-api.onrender.com/api/vehicles](https://incubyte-car-dealership-api.onrender.com/api/vehicles)
 
-The public frontend, backend health endpoint, vehicle-list endpoint, and frontend-to-backend CORS preflight were checked on 2026-10-25. The frontend bundle’s API base points to the backend URL above. Hosting dashboard settings, current plan, sleep behavior, and data durability are not independently verified by those public requests.
+Read-only checks for the frontend, backend health endpoint, vehicle-list endpoint, and frontend-to-backend CORS preflight were performed on 2026-10-25. The frontend bundle’s API base points to the backend API base URL above. These dated checks do not establish current endpoint availability or authentication requirements. Hosting dashboard settings, current plan, sleep behavior, and data durability are not independently verified.
 
 The application is branded **Motorline Automotive** in its customer and administrator UI; Incubyte Car Dealership is the assessment/project name.
 
