@@ -18,7 +18,43 @@ The application is branded **Motorline Automotive** in its customer and administ
 
 ## Screenshots
 
-These captures show the current sign-in and customer registration screens. They contain no entered account details. Other available captures were left out because they show identifying-looking account/order information or viewer overlays; verify and sanitize those before sharing them.
+The screenshots below show the implemented Motorline UI. I removed visible account details and the unique order ID from the relevant captures; the vehicle-list capture is cropped to remove the viewer overlay. Inventory counts, prices, and the displayed purchase are capture-time data and may not match the current API. The purchase-history capture still displays its captured vehicle and amount, while the account identity and order ID are redacted.
+
+### Customer experience
+
+#### Home page
+
+![Customer home page with hero, category filters, search, and inventory controls](docs/images/HomeScreen.png)
+
+*Customer landing page and entry point to the API-backed vehicle collection.*
+
+#### Vehicle listing
+
+![Customer vehicle listing with vehicle photographs, stock states, prices, and purchase buttons](docs/images/Cars%20Listing.png)
+
+*Inventory cards show images, availability, prices, and purchase actions. The capture is cropped to the vehicle listing and contains no account header.*
+
+#### Purchase history
+
+![Customer purchase history with one vehicle order; account identity and unique order ID are redacted](docs/images/Purchase%20History.png)
+
+*Customer purchase-history layout. The account header and unique order ID have been redacted; the captured row displays that payment details are unavailable.*
+
+### Administrator experience
+
+#### Inventory dashboard
+
+![Administrator dashboard with inventory totals, stock overview, and empty recent-activity panel](docs/images/Admin%20Dashboard.png)
+
+*Inventory-derived metrics and stock summaries. The recent-activity panel is empty in this capture; dashboard values reflect the capture-time inventory.*
+
+#### Vehicle management
+
+![Administrator vehicle management table with search, category and availability filters, and edit, restock, and delete actions](docs/images/Admin%20Vehicle.png)
+
+*Administrator inventory management view. The account area has been redacted.*
+
+### Authentication
 
 | Sign in | Create an account |
 | --- | --- |
@@ -303,9 +339,9 @@ The deployment preflight and smoke scripts are available as `npm run preflight:d
 
 ## Concept workflow illustration
 
-> **Concept illustration only — not a representation of implemented screens or data.** The legacy image below depicts a vehicle-details page, a cart, dashboard revenue/user metrics, and a `Cart Items` database model. Those features are not implemented. In the application, customers browse vehicle cards and purchase through a demo-payment modal; the admin dashboard reports inventory metrics; and the database has only `User`, `Vehicle`, and `Purchase` models. Use the source-based architecture diagram above and the captions on the genuine UI captures as implementation evidence.
+> **Concept illustration only — not a representation of implemented screens or data.** The legacy image below depicts a vehicle-details page, a cart, dashboard purchase/revenue/user metrics, and a `Cart Items` database model; those features are not implemented. Its administrator purchase table is illustrative, not a screenshot of the actual admin page (admin purchase history is implemented). In the application, customers browse vehicle cards and purchase through a demo-payment modal; the admin dashboard reports inventory metrics; and the database has only `User`, `Vehicle`, and `Purchase` models. The sample account and administrator order rows in the illustration have been redacted. Use the source-based architecture diagram above and the captions on the app captures as implementation evidence.
 
-![Conceptual dealership workflow illustration; depicted cart, vehicle-details screen, revenue/user metrics, and Cart Items model are not implemented](docs/images/Website Workflow.png)
+![Conceptual dealership workflow illustration; its sample account and administrator order rows are redacted, and the depicted cart, vehicle-details screen, dashboard revenue/user metrics, and Cart Items model are not implemented](docs/images/Website%20Workflow.png)
 
 ## My AI Usage
 
