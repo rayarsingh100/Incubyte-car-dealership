@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AppLayout from "./layouts/AppLayout.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import VehiclesPage from "./pages/VehiclesPage.jsx";
@@ -28,9 +28,21 @@ const sectionDetails = {
 export default function App() {
   const { user, token, login, logout } = useAuth();
   const [activeAdminSection, setActiveAdminSection] = useState("dashboard");
-  const [authPage, setAuthPage] = useState("login");
+  const [authPage, setAuthPage] = useState(() => window.location.hash === "#register" ? "register" : "login");
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [registrationNotice, setRegistrationNotice] = useState("");
+
+  useEffect(() => {
+    const syncAuthPage = () => setAuthPage(window.location.hash === "#register" ? "register" : "login");
+    window.addEventListener("popstate", syncAuthPage);
+    return () => window.removeEventListener("popstate", syncAuthPage);
+  }, []);
+
+  const navigateAuthPage = (page) => {
+    const hash = page === "register" ? "#register" : "#login";
+    if (window.location.hash !== hash) window.history.pushState({ authPage: page }, "", hash);
+    setAuthPage(page);
+  };
   const [vehicles, setVehicles] = useState(sampleInventory);
 
   if (!user || !token) {
@@ -40,8 +52,9 @@ export default function App() {
           onRegistered={(email, name) => {
             setRegisteredEmail(email);
             setRegistrationNotice(`Account created for ${name}. Sign in to continue.`);
-            setAuthPage("login");
+            navigateAuthPage("login");
           }}
+          onLogin={() => navigateAuthPage("login")}
         />
       );
     }
@@ -57,7 +70,7 @@ export default function App() {
         }}
         onRegister={() => {
           setRegistrationNotice("");
-          setAuthPage("register");
+          navigateAuthPage("register");
         }}
         notice={registrationNotice}
         initialEmail={registeredEmail}

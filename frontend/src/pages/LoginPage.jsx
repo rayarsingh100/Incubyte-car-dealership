@@ -1,23 +1,39 @@
 import { useRef, useState } from "react";
 import AuthPageLayout from "../components/AuthPageLayout.jsx";
+import Icon from "../components/Icon.jsx";
 import { validateLoginFields } from "../utils/authValidation.js";
 
-function Field({ id, label, value, onChange, type = "text", autoComplete, error, inputMode }) {
+function Field({ id, label, value, onChange, type = "text", autoComplete, error, inputMode, showPassword, onTogglePassword }) {
+  const inputType = onTogglePassword ? (showPassword ? "text" : "password") : type;
+
   return (
     <div>
       <label htmlFor={id} className="mb-1.5 block text-xs font-semibold text-slate-700">{label}</label>
-      <input
-        id={id}
-        name={id}
-        type={type}
-        inputMode={inputMode}
-        autoComplete={autoComplete}
-        value={value}
-        onChange={onChange}
-        aria-invalid={Boolean(error)}
-        aria-describedby={error ? `${id}-error` : undefined}
-        className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:ring-4 ${error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : "border-slate-200 focus:border-teal-500 focus:ring-teal-500/10"}`}
-      />
+      <div className="relative">
+        <input
+          id={id}
+          name={id}
+          type={inputType}
+          inputMode={inputMode}
+          autoComplete={autoComplete}
+          value={value}
+          onChange={onChange}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${id}-error` : undefined}
+          className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:ring-4 ${onTogglePassword ? "pr-11" : ""} ${error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : "border-slate-200 focus:border-teal-500 focus:ring-teal-500/10"}`}
+        />
+        {onTogglePassword && (
+          <button
+            type="button"
+            onClick={onTogglePassword}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-pressed={showPassword}
+            className="absolute inset-y-0 right-1.5 inline-flex w-10 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+          >
+            <Icon name={showPassword ? "eyeOff" : "eye"} className="h-4 w-4" />
+          </button>
+        )}
+      </div>
       {error && <p id={`${id}-error`} role="alert" className="mt-1.5 text-xs text-rose-700">{error}</p>}
     </div>
   );
@@ -28,6 +44,7 @@ export default function LoginPage({ onLogin, onRegister, notice, initialEmail = 
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const submittingRef = useRef(false);
 
   const update = (field, value) => {
@@ -60,7 +77,7 @@ export default function LoginPage({ onLogin, onRegister, notice, initialEmail = 
       eyebrow="Welcome back"
       title="Sign in to Motorline"
       description="Use your dealership account to continue to the workspace."
-      footer={<>New to Motorline? <button type="button" onClick={onRegister} className="font-semibold text-teal-800 hover:text-teal-900 focus:outline-none focus:underline">Create an account</button></>}
+      footer={<>New to Motorline? <a href="#register" onClick={(event) => { event.preventDefault(); onRegister(); }} className="font-semibold text-teal-800 hover:text-teal-900 focus:outline-none focus:underline">Create an account</a></>}
     >
       {notice && <p role="status" className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm leading-5 text-emerald-900">{notice}</p>}
       {apiError && <p role="alert" className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm leading-5 text-rose-800">{apiError}</p>}
@@ -82,6 +99,8 @@ export default function LoginPage({ onLogin, onRegister, notice, initialEmail = 
           value={values.password}
           error={errors.password}
           onChange={(event) => update("password", event.target.value)}
+          showPassword={showPassword}
+          onTogglePassword={() => setShowPassword((visible) => !visible)}
         />
         <button
           type="submit"
