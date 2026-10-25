@@ -1,13 +1,6 @@
 import Icon from "./Icon.jsx";
 
-const navigation = [
-  { id: "dashboard", label: "Dashboard", icon: "dashboard" },
-  { id: "vehicles", label: "Vehicles", icon: "vehicles" },
-  { id: "purchases", label: "Purchases", icon: "purchases" },
-  { id: "settings", label: "Settings", icon: "settings" },
-];
-
-export default function Sidebar({ activeSection, onNavigate, isMobileOpen, onClose }) {
+export default function Sidebar({ activeSection, navigation, onNavigate, isMobileOpen, onClose }) {
   return (
     <>
       {isMobileOpen && (

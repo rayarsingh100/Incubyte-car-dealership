@@ -5,9 +5,12 @@ const sectionLabels = {
   vehicles: "Vehicles",
   purchases: "Purchases",
   settings: "Settings",
+  "customer-home": "Home",
 };
 
-export default function Topbar({ activeSection, onMenuClick }) {
+export default function Topbar({ activeSection, user, accountLabel, onLogout, onMenuClick }) {
+  const initials = user.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+
   return (
     <header className="sticky top-0 z-30 flex h-[76px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-xl sm:px-7 lg:px-10">
       <div className="flex items-center gap-3">
@@ -31,19 +34,26 @@ export default function Topbar({ activeSection, onMenuClick }) {
       </div>
 
       <div className="flex items-center gap-3 sm:gap-4">
-        <span className="hidden rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-amber-800 uppercase sm:inline-flex">
-          Demo data
+        <span className="hidden rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-teal-800 uppercase sm:inline-flex">
+          {accountLabel}
         </span>
         <div className="h-8 w-px bg-slate-200" />
-        <div className="flex items-center gap-2.5">
+        <div className="flex min-w-0 items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold text-white ring-4 ring-slate-100">
-            UI
+            {initials}
           </div>
-          <div className="hidden sm:block">
-            <p className="text-xs font-semibold text-slate-800">Workspace preview</p>
-            <p className="mt-0.5 text-[10px] text-slate-500">No account connected</p>
+          <div className="hidden max-w-[180px] sm:block">
+            <p className="truncate text-xs font-semibold text-slate-800">{user.name}</p>
+            <p className="truncate text-[10px] text-slate-500">{user.email}</p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={onLogout}
+          className="rounded-xl border border-slate-200 px-3 py-2 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-teal-500/15 sm:px-3.5 sm:text-xs"
+        >
+          Sign out
+        </button>
       </div>
     </header>
   );
