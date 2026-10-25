@@ -8,7 +8,7 @@ function Field({ id, label, value, onChange, type = "text", autoComplete, error,
 
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-xs font-semibold text-slate-700">{label}</label>
+      <label htmlFor={id} className="mb-1.5 block text-xs font-semibold text-[#202520]">{label}</label>
       <div className="relative">
         <input
           id={id}
@@ -20,7 +20,7 @@ function Field({ id, label, value, onChange, type = "text", autoComplete, error,
           onChange={onChange}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined}
-          className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:ring-4 ${onTogglePassword ? "pr-11" : ""} ${error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : "border-slate-200 focus:border-teal-500 focus:ring-teal-500/10"}`}
+          className={`h-12 w-full rounded-xl border bg-[var(--color-panel)] px-3.5 text-sm text-[#202520] outline-none transition placeholder:text-[var(--color-text-subtle)] focus:ring-4 ${onTogglePassword ? "pr-11" : ""} ${error ? "border-[#c8847b] focus:border-rose-400 focus:ring-rose-500/10" : "border-[var(--color-border)] focus:border-[#d0b477] focus:ring-[#d0b477]/15"}`}
         />
         {onTogglePassword && (
           <button
@@ -28,13 +28,13 @@ function Field({ id, label, value, onChange, type = "text", autoComplete, error,
             onClick={onTogglePassword}
             aria-label={showPassword ? "Hide password" : "Show password"}
             aria-pressed={showPassword}
-            className="absolute inset-y-0 right-1.5 inline-flex w-10 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+            className="absolute inset-y-0 right-1.5 inline-flex w-10 items-center justify-center rounded-lg text-[#737a73] transition hover:bg-[var(--color-panel-raised)] hover:text-[#202520] focus:outline-none focus:ring-2 focus:ring-[#d0b477]/30"
           >
             <Icon name={showPassword ? "eyeOff" : "eye"} className="h-4 w-4" />
           </button>
         )}
       </div>
-      {error && <p id={`${id}-error`} role="alert" className="mt-1.5 text-xs text-rose-700">{error}</p>}
+      {error && <p id={`${id}-error`} role="alert" className="mt-1.5 text-xs text-[#9f3e36]">{error}</p>}
     </div>
   );
 }
@@ -77,10 +77,10 @@ export default function LoginPage({ onLogin, onRegister, notice, initialEmail = 
       eyebrow="Welcome back"
       title="Sign in to Motorline"
       description="Use your dealership account to continue to the workspace."
-      footer={<>New to Motorline? <a href="#register" onClick={(event) => { event.preventDefault(); onRegister(); }} className="font-semibold text-teal-800 hover:text-teal-900 focus:outline-none focus:underline">Create an account</a></>}
+      footer={<>New to Motorline? <a href="#register" onClick={(event) => { event.preventDefault(); onRegister(); }} className="font-semibold text-[var(--color-champagne-soft)] hover:text-teal-900 focus:outline-none focus:underline">Create an account</a></>}
     >
-      {notice && <p role="status" className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm leading-5 text-emerald-900">{notice}</p>}
-      {apiError && <p role="alert" className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm leading-5 text-rose-800">{apiError}</p>}
+      {notice && <p role="status" className="mb-5 rounded-xl border border-[#c8d8cc] bg-[var(--color-positive-wash)] px-3.5 py-3 text-sm leading-5 text-[#164e41]">{notice}</p>}
+      {apiError && <p role="alert" className="mb-5 rounded-xl border border-[#e6c4bf] bg-[var(--color-danger-wash)] px-3.5 py-3 text-sm leading-5 text-[#9f3e36]">{apiError}</p>}
       <form noValidate onSubmit={handleSubmit} className="space-y-4">
         <Field
           id="email"
@@ -105,7 +105,7 @@ export default function LoginPage({ onLogin, onRegister, notice, initialEmail = 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="mt-2 inline-flex h-12 w-full items-center justify-center rounded-xl bg-teal-700 px-4 text-sm font-semibold text-white shadow-sm shadow-teal-900/15 transition hover:bg-teal-800 focus:outline-none focus:ring-4 focus:ring-teal-600/20 disabled:cursor-wait disabled:opacity-70"
+          className="mt-2 inline-flex h-12 w-full items-center justify-center rounded-xl bg-[var(--color-bronze)] px-4 text-sm font-semibold text-white shadow-sm shadow-black/20 transition hover:bg-[var(--color-bronze-hover)] focus:outline-none focus:ring-4 focus:ring-[#d0b477]/20 disabled:cursor-wait disabled:opacity-70"
         >
           {isSubmitting ? "Signing in…" : "Sign in"}
         </button>

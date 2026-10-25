@@ -31,12 +31,12 @@ export default function RestockVehicleModal({ vehicle, onSave, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-[2px] sm:items-center sm:p-5">
-      <section role="dialog" aria-modal="true" aria-labelledby="restock-title" className="w-full max-w-md rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl sm:p-7">
-        <h2 id="restock-title" className="text-lg font-semibold text-slate-900">Restock {vehicle.make} {vehicle.model}</h2>
-        <p className="mt-1 text-sm text-slate-500">Current stock: {vehicle.quantity}. Enter the number of units to add.</p>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-[#202520]/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-5">
+      <section role="dialog" aria-modal="true" aria-labelledby="restock-title" className="w-full max-w-md rounded-t-3xl bg-[var(--color-panel)] p-5 shadow-2xl sm:rounded-3xl sm:p-7">
+        <h2 id="restock-title" className="text-lg font-semibold text-[var(--color-text)]">Restock {vehicle.make} {vehicle.model}</h2>
+        <p className="mt-1 text-sm text-[#737a73]">Current stock: {vehicle.quantity}. Enter the number of units to add.</p>
         <form noValidate onSubmit={handleSubmit} className="mt-5">
-          <label htmlFor="restock-quantity" className="mb-1.5 block text-xs font-semibold text-slate-700">Units to add</label>
+          <label htmlFor="restock-quantity" className="mb-1.5 block text-xs font-semibold text-[#202520]">Units to add</label>
           <input
             id="restock-quantity"
             type="number"
@@ -49,12 +49,12 @@ export default function RestockVehicleModal({ vehicle, onSave, onClose }) {
             onChange={(event) => { setQuantity(event.target.value); setError(""); }}
             aria-invalid={Boolean(error)}
             aria-describedby={error ? "restock-error" : undefined}
-            className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10"
+            className="h-11 w-full rounded-xl border border-[var(--color-border)] px-3 text-sm outline-none focus:border-[#d0b477] focus:ring-4 focus:ring-[#d0b477]/15"
           />
-          {error && <p id="restock-error" role="alert" className="mt-2 text-xs text-rose-700">{error}</p>}
+          {error && <p id="restock-error" role="alert" className="mt-2 text-xs text-[#9f3e36]">{error}</p>}
           <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button type="button" disabled={isSubmitting} onClick={onClose} className="h-10 rounded-xl border border-slate-200 px-4 text-xs font-semibold text-slate-700 disabled:opacity-60">Cancel</button>
-            <button type="submit" disabled={isSubmitting} className="h-10 rounded-xl bg-teal-700 px-4 text-xs font-semibold text-white disabled:cursor-wait disabled:opacity-70">{isSubmitting ? "Restocking…" : "Add stock"}</button>
+            <button type="button" disabled={isSubmitting} onClick={onClose} className="h-10 rounded-xl border border-[var(--color-border)] px-4 text-xs font-semibold text-[#202520] disabled:opacity-60">Cancel</button>
+            <button type="submit" disabled={isSubmitting} className="h-10 rounded-xl bg-[var(--color-bronze)] px-4 text-xs font-semibold text-white disabled:cursor-wait disabled:opacity-70">{isSubmitting ? "Restocking…" : "Add stock"}</button>
           </div>
         </form>
       </section>

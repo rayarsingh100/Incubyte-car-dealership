@@ -1,6 +1,6 @@
 import Icon from "../components/Icon.jsx";
 import MetricCard from "../components/MetricCard.jsx";
-import { sampleActivity, summarizeInventory } from "../utils/dashboardMockData.js";
+import { summarizeInventory } from "../utils/dashboardMockData.js";
 import { formatCurrency, formatNumber } from "../utils/formatters.js";
 
 const metrics = (summary) => [
@@ -34,13 +34,6 @@ const metrics = (summary) => [
   },
 ];
 
-const activityTones = {
-  teal: "bg-teal-50 text-teal-700",
-  amber: "bg-amber-50 text-amber-700",
-  blue: "bg-blue-50 text-blue-700",
-  violet: "bg-violet-50 text-violet-700",
-};
-
 function InventorySummary({ inventory }) {
   const categories = inventory.reduce((groups, vehicle) => {
     groups[vehicle.category] = (groups[vehicle.category] || 0) + vehicle.quantity;
@@ -48,27 +41,27 @@ function InventorySummary({ inventory }) {
   }, {});
   const categoryRows = Object.entries(categories).sort((first, second) => second[1] - first[1]);
   const totalUnits = categoryRows.reduce((total, [, units]) => total + units, 0);
-  const colors = ["bg-teal-500", "bg-blue-500", "bg-indigo-500", "bg-amber-400"];
+  const colors = ["bg-[var(--color-sage)]", "bg-[#6f8f83]", "bg-[var(--color-gold-wash)]", "bg-[var(--color-panel-soft)]"];
 
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.025)] sm:p-6">
+    <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-panel)] p-5 shadow-[0_2px_8px_rgba(15,23,42,0.025)] sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">Inventory overview</h2>
-          <p className="mt-1 text-xs text-slate-500">Current stock by vehicle type</p>
+          <h2 className="text-sm font-semibold text-[var(--color-text)]">Inventory overview</h2>
+          <p className="mt-1 text-xs text-[#737a73]">Current stock by vehicle type</p>
         </div>
-        <span className="rounded-lg bg-slate-50 px-2.5 py-1.5 text-[10px] font-medium text-slate-500 ring-1 ring-inset ring-slate-200">
+        <span className="rounded-lg bg-[var(--color-panel-raised)] px-2.5 py-1.5 text-[10px] font-medium text-[#737a73] ring-1 ring-inset ring-[#e5e2d9]">
           {formatNumber(totalUnits)} units
         </span>
       </div>
 
       {categoryRows.length === 0 || totalUnits === 0 ? (
-        <div className="mt-7 rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
+        <div className="mt-7 rounded-xl border border-dashed border-[var(--color-border)] px-4 py-8 text-center text-sm text-[#737a73]">
           {categoryRows.length === 0 ? "No vehicles are in the inventory yet." : "Vehicles are listed, but there are no units in stock."}
         </div>
       ) : (
         <>
-          <div className="mt-7 flex h-2 overflow-hidden rounded-full bg-slate-100" aria-label="Sample inventory by vehicle type">
+          <div className="mt-7 flex h-2 overflow-hidden rounded-full bg-[var(--color-panel-soft)]" aria-label="Current inventory by vehicle type">
             {categoryRows.map(([category, units], index) => (
               <div
                 key={category}
@@ -82,9 +75,9 @@ function InventorySummary({ inventory }) {
             {categoryRows.map(([category, units], index) => (
               <div key={category} className="flex items-center gap-3">
                 <span className={`h-2.5 w-2.5 rounded-full ${colors[index % colors.length]}`} />
-                <span className="flex-1 text-xs font-medium text-slate-600">{category}</span>
-                <span className="text-xs font-semibold tabular-nums text-slate-800">{formatNumber(units)}</span>
-                <span className="w-10 text-right text-[11px] tabular-nums text-slate-400">
+                <span className="flex-1 text-xs font-medium text-[var(--color-text-muted)]">{category}</span>
+                <span className="text-xs font-semibold tabular-nums text-[#202520]">{formatNumber(units)}</span>
+                <span className="w-10 text-right text-[11px] tabular-nums text-[var(--color-text-subtle)]">
                   {Math.round((units / totalUnits) * 100)}%
                 </span>
               </div>
@@ -98,35 +91,18 @@ function InventorySummary({ inventory }) {
 
 function RecentActivity() {
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.025)] sm:p-6">
+    <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-panel)] p-5 shadow-[0_2px_8px_rgba(15,23,42,0.025)] sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">Recent activity</h2>
-          <p className="mt-1 text-xs text-slate-500">Illustrative sample events</p>
+          <h2 className="text-sm font-semibold text-[var(--color-text)]">Recent activity</h2>
+          <p className="mt-1 text-xs text-[#737a73]">Dealership activity</p>
         </div>
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50 text-slate-500 ring-1 ring-inset ring-slate-200">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-panel-raised)] text-[#737a73] ring-1 ring-inset ring-[#e5e2d9]">
           <Icon name="clock" className="h-4 w-4" />
         </span>
       </div>
 
-      <div className="mt-4 divide-y divide-slate-100">
-        {sampleActivity.length === 0 ? (
-          <div className="py-8 text-center text-sm text-slate-500">No activity to show yet.</div>
-        ) : (
-          sampleActivity.map((activity) => (
-            <div key={activity.id} className="flex gap-3 py-4 first:pt-2 last:pb-1">
-              <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${activityTones[activity.tone]}`}>
-                <Icon name={activity.tone === "amber" ? "warning" : activity.tone === "teal" ? "check" : "box"} className="h-4 w-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-slate-800">{activity.title}</p>
-                <p className="mt-1 truncate text-[11px] text-slate-500">{activity.detail}</p>
-                <p className="mt-1.5 text-[10px] text-slate-400">{activity.time}</p>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+      <div className="mt-4 py-8 text-center text-sm text-[#737a73]">No activity data is available.</div>
     </section>
   );
 }
@@ -137,36 +113,36 @@ function LowStockList({ inventory }) {
     .sort((first, second) => first.quantity - second.quantity);
 
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.025)] sm:p-6">
+    <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-panel)] p-5 shadow-[0_2px_8px_rgba(15,23,42,0.025)] sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">Needs attention</h2>
-          <p className="mt-1 text-xs text-slate-500">Vehicles with 4 or fewer units in stock</p>
+          <h2 className="text-sm font-semibold text-[var(--color-text)]">Needs attention</h2>
+          <p className="mt-1 text-xs text-[#737a73]">Vehicles with 4 or fewer units in stock</p>
         </div>
-        <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
+        <span className="rounded-full bg-[var(--color-gold-wash)] px-2.5 py-1 text-[10px] font-semibold text-[var(--color-champagne-soft)] ring-1 ring-inset ring-[#d8c99f]">
           {lowStockVehicles.length} low
         </span>
       </div>
 
       {lowStockVehicles.length === 0 ? (
-        <div className="mt-5 rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
-          <p className="text-sm font-medium text-slate-700">All clear</p>
-          <p className="mt-1 text-xs text-slate-500">There are no low-stock vehicles.</p>
+        <div className="mt-5 rounded-xl border border-dashed border-[var(--color-border)] px-4 py-8 text-center">
+          <p className="text-sm font-medium text-[#202520]">All clear</p>
+          <p className="mt-1 text-xs text-[#737a73]">There are no low-stock vehicles.</p>
         </div>
       ) : (
-        <div className="mt-4 divide-y divide-slate-100">
+        <div className="mt-4 divide-y divide-[#e5e2d9]">
           {lowStockVehicles.map((vehicle) => (
             <div key={vehicle.id} className="flex items-center justify-between gap-3 py-3.5 first:pt-2 last:pb-1">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-panel-soft)] text-[var(--color-text-muted)]">
                   <Icon name="vehicles" className="h-[17px] w-[17px]" />
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-slate-800">{vehicle.make} {vehicle.model}</p>
-                  <p className="mt-1 text-[10px] text-slate-500">{vehicle.category}</p>
+                  <p className="truncate text-xs font-semibold text-[#202520]">{vehicle.make} {vehicle.model}</p>
+                  <p className="mt-1 text-[10px] text-[#737a73]">{vehicle.category}</p>
                 </div>
               </div>
-              <span className="shrink-0 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] font-semibold tabular-nums text-amber-800">
+              <span className="shrink-0 rounded-lg bg-[var(--color-gold-wash)] px-2.5 py-1.5 text-[11px] font-semibold tabular-nums text-[var(--color-champagne-soft)]">
                 {vehicle.quantity} left
               </span>
             </div>
@@ -184,23 +160,19 @@ export default function DashboardPage({ vehicles, inventoryError, isRefreshing, 
     <div className="mx-auto max-w-[1240px]">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-teal-800 uppercase">
-            <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#d8c99f] bg-[var(--color-gold-wash)] px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-[var(--color-champagne-soft)] uppercase">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-sage)]" />
             Live inventory
           </div>
-          <h1 className="text-[27px] font-semibold tracking-[-0.035em] text-slate-950 sm:text-[32px]">Dashboard</h1>
-          <p className="mt-1.5 text-[13px] text-slate-500">A snapshot of the dealership inventory workspace.</p>
-        </div>
-        <div className="flex items-center gap-2 text-[11px] text-slate-500">
-          <Icon name="clock" className="h-4 w-4" />
-          From the connected API
+          <h1 className="font-display text-[34px] tracking-[-0.025em] text-[var(--color-text)] sm:text-[42px]">Dashboard</h1>
+          <p className="mt-1.5 text-[13px] text-[#737a73]">A considered view of the current collection.</p>
         </div>
       </div>
 
       {inventoryError && (
-        <div role="alert" className="mt-5 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+        <div role="alert" className="mt-5 flex flex-col gap-3 rounded-xl border border-[#d8c99f] bg-[var(--color-gold-wash)] px-4 py-3 text-xs text-[var(--color-champagne-soft)] sm:flex-row sm:items-center sm:justify-between">
           <p>{inventoryError.status === 401 ? "Your session could not be verified. Sign out and sign in again." : inventoryError.status === 403 ? "Your account does not have permission to access inventory." : "Inventory was updated, but the latest refresh failed. Displayed figures may be stale."}</p>
-          <button type="button" onClick={onRefresh} disabled={isRefreshing} className="shrink-0 rounded-lg px-3 py-2 font-semibold text-amber-900 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-600/20 disabled:cursor-wait disabled:opacity-60">{isRefreshing ? "Refreshing…" : "Retry refresh"}</button>
+          <button type="button" onClick={onRefresh} disabled={isRefreshing} className="shrink-0 rounded-lg px-3 py-2 font-semibold text-[var(--color-champagne-soft)] hover:bg-[var(--color-panel-raised)] focus:outline-none focus:ring-2 focus:ring-amber-600/20 disabled:cursor-wait disabled:opacity-60">{isRefreshing ? "Refreshing…" : "Retry refresh"}</button>
         </div>
       )}
 
@@ -214,13 +186,13 @@ export default function DashboardPage({ vehicles, inventoryError, isRefreshing, 
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_0.68fr]">
-        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.025)] sm:p-6">
+        <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-panel)] p-5 shadow-[0_2px_8px_rgba(15,23,42,0.025)] sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-slate-900">Stock levels</h2>
-              <p className="mt-1 text-xs text-slate-500">Current quantity by vehicle model</p>
+              <h2 className="text-sm font-semibold text-[var(--color-text)]">Stock levels</h2>
+              <p className="mt-1 text-xs text-[#737a73]">Current quantity by vehicle model</p>
             </div>
-            <span className="flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-[10px] font-medium text-slate-500 ring-1 ring-inset ring-slate-200">
+            <span className="flex items-center gap-1.5 rounded-lg bg-[var(--color-panel-raised)] px-2.5 py-1.5 text-[10px] font-medium text-[#737a73] ring-1 ring-inset ring-[#e5e2d9]">
               <Icon name="box" className="h-3.5 w-3.5" />
               {formatNumber(summary.totalUnits)} units
             </span>
@@ -231,12 +203,12 @@ export default function DashboardPage({ vehicles, inventoryError, isRefreshing, 
               return (
                 <div key={vehicle.id}>
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="truncate text-[11px] font-medium text-slate-600">{vehicle.make} {vehicle.model}</span>
-                    <span className="shrink-0 text-[11px] font-semibold tabular-nums text-slate-800">{vehicle.quantity}</span>
+                    <span className="truncate text-[11px] font-medium text-[var(--color-text-muted)]">{vehicle.make} {vehicle.model}</span>
+                    <span className="shrink-0 text-[11px] font-semibold tabular-nums text-[#202520]">{vehicle.quantity}</span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-panel-soft)]">
                     <div
-                      className={`h-full rounded-full ${vehicle.quantity <= 4 ? "bg-amber-400" : "bg-teal-500"}`}
+                      className={`h-full rounded-full ${vehicle.quantity <= 4 ? "bg-[#d0b477]" : "bg-[var(--color-sage)]"}`}
                       style={{ width: `${width}%` }}
                     />
                   </div>
@@ -248,8 +220,8 @@ export default function DashboardPage({ vehicles, inventoryError, isRefreshing, 
         <LowStockList inventory={vehicles} />
       </div>
 
-      <footer className="mt-8 flex flex-col justify-between gap-2 border-t border-slate-200/80 pt-5 text-[10px] text-slate-400 sm:flex-row sm:items-center">
-        <p>Inventory metrics come from the connected backend. Recent activity remains illustrative sample content.</p>
+      <footer className="mt-8 flex flex-col justify-between gap-2 border-t border-[var(--color-border)] pt-5 text-[10px] text-[var(--color-text-subtle)] sm:flex-row sm:items-center">
+        <p>Current inventory at a glance.</p>
         <p>Motorline inventory workspace</p>
       </footer>
     </div>

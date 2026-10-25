@@ -1,15 +1,15 @@
 import { getAvailability } from "../utils/vehicleInventory.js";
 
 const statusStyles = {
-  "in-stock": "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  "low-stock": "bg-amber-50 text-amber-800 ring-amber-200",
-  "out-of-stock": "bg-slate-100 text-slate-600 ring-slate-200",
+  "in-stock": "bg-[var(--color-positive-wash)] text-[#164e41] ring-[#394c3e]",
+  "low-stock": "bg-[var(--color-gold-wash)] text-[var(--color-champagne-soft)] ring-[#d8c99f]",
+  "out-of-stock": "bg-[var(--color-panel-soft)] text-[var(--color-text-muted)] ring-[#d3d0c6]",
 };
 
 const dotStyles = {
-  "in-stock": "bg-emerald-500",
-  "low-stock": "bg-amber-500",
-  "out-of-stock": "bg-slate-400",
+  "in-stock": "bg-[#7fa48a]",
+  "low-stock": "bg-[var(--color-sage)]",
+  "out-of-stock": "bg-[#777267]",
 };
 
 export default function VehicleStatusBadge({ quantity }) {

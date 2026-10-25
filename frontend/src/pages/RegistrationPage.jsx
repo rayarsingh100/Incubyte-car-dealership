@@ -54,9 +54,9 @@ export default function RegistrationPage({ onRegistered, onLogin }) {
       eyebrow="Create your account"
       title="Join Motorline"
       description="Create a customer account to access the dealership workspace."
-      footer={<>Already registered? <a href="#login" onClick={(event) => { event.preventDefault(); onLogin(); }} className="font-semibold text-teal-800 hover:text-teal-900 focus:outline-none focus:underline">Back to sign in</a></>}
+      footer={<>Already registered? <a href="#login" onClick={(event) => { event.preventDefault(); onLogin(); }} className="font-semibold text-[var(--color-champagne-soft)] hover:text-teal-900 focus:outline-none focus:underline">Back to sign in</a></>}
     >
-      {apiError && <p role="alert" className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm leading-5 text-rose-800">{apiError}</p>}
+      {apiError && <p role="alert" className="mb-5 rounded-xl border border-[#e6c4bf] bg-[var(--color-danger-wash)] px-3.5 py-3 text-sm leading-5 text-[#9f3e36]">{apiError}</p>}
       <form noValidate onSubmit={handleSubmit} className="space-y-3.5">
         {fields.map((field) => {
           const id = `register-${field.name}`;
@@ -65,7 +65,7 @@ export default function RegistrationPage({ onRegistered, onLogin }) {
           const showPassword = visiblePasswords[field.name];
           return (
             <div key={field.name}>
-              <label htmlFor={id} className="mb-1.5 block text-xs font-semibold text-slate-700">{field.label}</label>
+              <label htmlFor={id} className="mb-1.5 block text-xs font-semibold text-[#202520]">{field.label}</label>
               <div className="relative">
                 <input
                   id={id}
@@ -76,7 +76,7 @@ export default function RegistrationPage({ onRegistered, onLogin }) {
                   onChange={(event) => update(field.name, event.target.value)}
                   aria-invalid={Boolean(error)}
                   aria-describedby={error ? `${id}-error` : undefined}
-                  className={`h-11 w-full rounded-xl border bg-white px-3.5 text-sm text-slate-800 outline-none transition focus:ring-4 ${isPassword ? "pr-11" : ""} ${error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : "border-slate-200 focus:border-teal-500 focus:ring-teal-500/10"}`}
+                  className={`h-11 w-full rounded-xl border bg-[var(--color-panel)] px-3.5 text-sm text-[#202520] outline-none transition focus:ring-4 ${isPassword ? "pr-11" : ""} ${error ? "border-[#c8847b] focus:border-rose-400 focus:ring-rose-500/10" : "border-[var(--color-border)] focus:border-[#d0b477] focus:ring-[#d0b477]/15"}`}
                 />
                 {isPassword && (
                   <button
@@ -84,20 +84,20 @@ export default function RegistrationPage({ onRegistered, onLogin }) {
                     onClick={() => setVisiblePasswords((current) => ({ ...current, [field.name]: !current[field.name] }))}
                     aria-label={`${showPassword ? "Hide" : "Show"} ${field.name === "confirmation" ? "confirm password" : "password"}`}
                     aria-pressed={showPassword}
-                    className="absolute inset-y-0 right-1.5 inline-flex w-10 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                    className="absolute inset-y-0 right-1.5 inline-flex w-10 items-center justify-center rounded-lg text-[#737a73] transition hover:bg-[var(--color-panel-raised)] hover:text-[#202520] focus:outline-none focus:ring-2 focus:ring-[#d0b477]/30"
                   >
                     <Icon name={showPassword ? "eyeOff" : "eye"} className="h-4 w-4" />
                   </button>
                 )}
               </div>
-              {error && <p id={`${id}-error`} role="alert" className="mt-1 text-xs text-rose-700">{error}</p>}
+              {error && <p id={`${id}-error`} role="alert" className="mt-1 text-xs text-[#9f3e36]">{error}</p>}
             </div>
           );
         })}
         <button
           type="submit"
           disabled={isSubmitting}
-          className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-teal-700 px-4 text-sm font-semibold text-white shadow-sm shadow-teal-900/15 transition hover:bg-teal-800 focus:outline-none focus:ring-4 focus:ring-teal-600/20 disabled:cursor-wait disabled:opacity-70"
+          className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-[var(--color-bronze)] px-4 text-sm font-semibold text-white shadow-sm shadow-black/20 transition hover:bg-[var(--color-bronze-hover)] focus:outline-none focus:ring-4 focus:ring-[#d0b477]/20 disabled:cursor-wait disabled:opacity-70"
         >
           {isSubmitting ? "Creating account…" : "Create account"}
         </button>

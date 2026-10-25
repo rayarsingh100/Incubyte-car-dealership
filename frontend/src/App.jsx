@@ -34,6 +34,7 @@ export default function App() {
   const inventory = useVehicleInventory(token, canBrowseInventory);
   const [activeAdminSection, setActiveAdminSection] = useState("dashboard");
   const [activeCustomerSection, setActiveCustomerSection] = useState("customer-home");
+  const [customerSearch, setCustomerSearch] = useState("");
   const [authPage, setAuthPage] = useState(() => window.location.hash === "#register" ? "register" : "login");
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [registrationNotice, setRegistrationNotice] = useState("");
@@ -85,11 +86,11 @@ export default function App() {
 
   if (!roleAccess) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-        <section role="alert" className="max-w-md rounded-2xl border border-rose-200 bg-white p-7 text-center shadow-sm">
-          <h1 className="text-lg font-semibold text-slate-900">Account access unavailable</h1>
-          <p className="mt-2 text-sm text-slate-600">The account role could not be verified. Sign out and contact your administrator.</p>
-          <button type="button" onClick={logout} className="mt-5 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white">Sign out</button>
+      <main className="flex min-h-screen items-center justify-center bg-[var(--color-panel-raised)] px-4">
+        <section role="alert" className="max-w-md rounded-2xl border border-[#e6c4bf] bg-[var(--color-panel)] p-7 text-center shadow-sm">
+          <h1 className="text-lg font-semibold text-[var(--color-text)]">Account access unavailable</h1>
+          <p className="mt-2 text-sm text-[var(--color-text-muted)]">The account role could not be verified. Sign out and contact your administrator.</p>
+          <button type="button" onClick={logout} className="mt-5 rounded-xl bg-[var(--color-bronze)] px-4 py-2.5 text-sm font-semibold text-white">Sign out</button>
         </section>
       </main>
     );
@@ -104,6 +105,9 @@ export default function App() {
       accountLabel={roleAccess.accountLabel}
       onLogout={logout}
       onNavigate={roleAccess.experience === "admin" ? setActiveAdminSection : setActiveCustomerSection}
+      showSearch={roleAccess.experience === "customer" && activeSection === "customer-home"}
+      searchValue={customerSearch}
+      onSearchChange={setCustomerSearch}
     >
       {roleAccess.experience === "customer" && activeSection === "customer-purchases" ? (
         <PurchaseHistoryPage token={token} />
@@ -116,19 +120,21 @@ export default function App() {
           isRefreshing={inventory.isRefreshing}
           onRefresh={() => inventory.refresh().catch(() => {})}
           onPurchase={inventory.purchaseVehicle}
+          search={customerSearch}
+          onSearchChange={setCustomerSearch}
         />
       ) : inventory.vehicles === null ? (
         <section className="mx-auto flex min-h-[45vh] max-w-xl flex-col items-center justify-center px-5 text-center">
           {inventory.isLoading ? (
             <>
-              <span className="h-9 w-9 animate-spin rounded-full border-2 border-slate-200 border-t-teal-700" aria-hidden="true" />
-              <p role="status" className="mt-4 text-sm font-medium text-slate-700">Loading vehicle inventory…</p>
+              <span className="h-9 w-9 animate-spin rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-champagne)]" aria-hidden="true" />
+              <p role="status" className="mt-4 text-sm font-medium text-[#202520]">Loading vehicle inventory…</p>
             </>
           ) : (
             <>
-              <h1 className="text-lg font-semibold text-slate-900">Inventory could not be loaded</h1>
-              <p role="alert" className="mt-2 text-sm text-slate-600">{inventory.error?.status === 401 ? "Your session could not be verified. Sign out and sign in again." : inventory.error?.status === 403 ? "Your account does not have permission to view this inventory." : inventory.error?.message || "Please check the API connection and try again."}</p>
-              <button type="button" onClick={() => inventory.refresh().catch(() => {})} className="mt-5 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white focus:outline-none focus:ring-4 focus:ring-teal-600/20">Try again</button>
+              <h1 className="text-lg font-semibold text-[var(--color-text)]">Inventory could not be loaded</h1>
+              <p role="alert" className="mt-2 text-sm text-[var(--color-text-muted)]">{inventory.error?.status === 401 ? "Your session could not be verified. Sign out and sign in again." : inventory.error?.status === 403 ? "Your account does not have permission to view this inventory." : inventory.error?.message || "Please check the API connection and try again."}</p>
+              <button type="button" onClick={() => inventory.refresh().catch(() => {})} className="mt-5 rounded-xl bg-[var(--color-bronze)] px-4 py-2.5 text-sm font-semibold text-white focus:outline-none focus:ring-4 focus:ring-[#d0b477]/20">Try again</button>
             </>
           )}
         </section>

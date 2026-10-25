@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Icon from "./Icon.jsx";
 
-export default function VehicleImage({ imageUrl, alt, className }) {
+export default function VehicleImage({ imageUrl, alt, className, loading = "lazy", fetchPriority }) {
   const [hasFailed, setHasFailed] = useState(false);
 
   useEffect(() => {
@@ -10,7 +10,7 @@ export default function VehicleImage({ imageUrl, alt, className }) {
 
   if (!imageUrl || hasFailed) {
     return (
-      <div className={`flex items-center justify-center bg-slate-100 text-slate-400 ${className}`} aria-hidden="true">
+      <div className={`flex items-center justify-center bg-[var(--color-panel-soft)] text-[var(--color-text-subtle)] ${className}`} aria-hidden="true">
         <Icon name="vehicles" className="h-8 w-8" />
       </div>
     );
@@ -20,10 +20,11 @@ export default function VehicleImage({ imageUrl, alt, className }) {
     <img
       src={imageUrl}
       alt={alt}
-      loading="lazy"
+      loading={loading}
+      fetchPriority={fetchPriority}
       referrerPolicy="no-referrer"
       onError={() => setHasFailed(true)}
-      className={`bg-slate-100 object-cover ${className}`}
+      className={`bg-[var(--color-panel-soft)] object-cover ${className}`}
     />
   );
 }
