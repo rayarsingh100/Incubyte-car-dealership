@@ -1,6 +1,6 @@
 import Icon from "./Icon.jsx";
 
-const sectionLabels = { dashboard: "Dashboard", vehicles: "Vehicles", purchases: "Purchases", settings: "Settings", "customer-home": "Home", "customer-purchases": "Purchases" };
+const sectionLabels = { dashboard: "Dashboard", vehicles: "Vehicles", purchases: "Purchases", "customer-home": "Home", "customer-purchases": "Purchases" };
 
 export default function Topbar({ activeSection, user, accountLabel, onLogout, onMenuClick, showSearch, searchValue = "", onSearchChange }) {
   const initials = user.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();

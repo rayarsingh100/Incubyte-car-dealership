@@ -36,7 +36,7 @@ The public frontend, backend health endpoint, vehicle-list endpoint, and fronten
 
 ## Overview
 
-The application has two role-based experiences. Customers can browse the live inventory, purchase available stock, and view their own purchase history. Administrators can review inventory metrics and manage vehicles. The React client talks to an Express JSON API; Prisma maps application records to PostgreSQL.
+The application has two role-based experiences. Customers can browse the live inventory, complete a simulated demo payment, and view their own purchase history. Administrators can review inventory metrics, manage vehicles, and view customer orders. The React client talks to an Express JSON API; Prisma maps application records to PostgreSQL.
 
 The dashboard’s inventory totals and stock views are derived from API data. Its “Recent activity” entries are illustrative sample content, not a live activity feed. Vehicle image links are optional; the interface shows a fallback icon when a URL is missing or cannot load.
 
@@ -61,7 +61,7 @@ The dashboard’s inventory totals and stock views are derived from API data. It
 
 - Paginated vehicle listing with search and field filters.
 - Image URLs are optional and validated as HTTP/HTTPS URLs; URL syntax does not guarantee the remote resource is an image or remains available.
-- Purchases record the unit price at purchase time and decrement stock in a Prisma transaction.
+- Successful demo purchases record the stored unit price, demo payment result, and stock decrement in a Prisma transaction. Failed or cancelled simulations do not create an order or change stock.
 - Insufficient stock returns a conflict response; conditional stock updates protect against overselling.
 
 ### Authentication and roles
@@ -211,17 +211,20 @@ All endpoints are under `/api`, return JSON, and use errors shaped as `{ "error"
 | `POST /api/auth/register` | Public | Accepts `name`, `email`, and `password`; creates a `USER`; returns `201 { user }`. Duplicate email returns `409`. |
 | `POST /api/auth/login` | Public, rate limited | Accepts `email` and `password`; returns `200 { token, user }`; JWT expires after one hour. |
 | `GET /api/vehicles` | Public | Returns `200` with paginated inventory; supports `page`, `limit`, `search`, exact `make`/`model`/`category`, `minPrice`, `maxPrice`, and `inStock`. |
+| `GET /api/vehicles/search` | Public | Assignment-compatible alias for the filtered, paginated vehicle listing; accepts the same query parameters as `GET /api/vehicles`. |
 | `GET /api/vehicles/:id` | Public | Returns `200 { vehicle }` or `404`. |
 | `POST /api/vehicles` | Admin | Creates a vehicle; requires `make`, `model`, `category`, `price`, `quantity`; optional `imageUrl` may be an HTTP(S) URL or `null`; returns `201 { vehicle }`. |
 | `PATCH /api/vehicles/:id` | Admin | Updates allowed vehicle fields and returns `200 { vehicle }`; `imageUrl: null` clears the image. Unknown fields are rejected. |
+| `PUT /api/vehicles/:id` | Admin | Assignment-compatible alias for the same validated update operation as `PATCH`. |
 | `DELETE /api/vehicles/:id` | Admin | Returns `200` after deletion; a vehicle with purchase history returns `409`. |
 | `POST /api/vehicles/:id/restock` | Admin | Accepts a positive integer `quantity`, increments stock, and returns `200 { vehicle }`. |
-| `POST /api/vehicles/:id/purchases` | Authenticated | Accepts a positive integer `quantity`; records purchase and stock update transactionally and returns `201`; insufficient stock returns `409`. |
-| `GET /api/purchases` | Authenticated | Returns `200` with only the caller’s history, newest first, and pagination (`page`, `limit`; maximum 100). |
+| `POST /api/vehicles/:id/purchases` | Authenticated | Accepts `quantity` and optional demo outcome; only success records payment status and updates stock transactionally. |
+| `POST /api/vehicles/:id/purchase` | Authenticated | Singular-path compatibility alias for the demo payment operation. |
+| `GET /api/purchases` | Authenticated | Customers receive only their history; administrators receive all orders with safe buyer details. Both are paginated newest first. |
 | `GET /api/health` | Public | Returns `200` liveness response; does not query the database. |
 | `GET /api/ready` | Public | Read-only database readiness check (`SELECT 1`); returns `200` or sanitized `503`. |
 
-Vehicle listing defaults to page 1 and 20 records per page (maximum 100). The API returns `{ vehicles, pagination: { page, limit, total, pages } }`. Purchase history uses the same pagination shape; each record includes its purchase-time unit price, quantity, creation time, computed total, and safe vehicle summary.
+Vehicle listing defaults to page 1 and 20 records per page (maximum 100). The API returns `{ vehicles, pagination: { page, limit, total, pages } }`. Purchase history uses the same pagination shape; each record includes its purchase-time unit price, quantity, creation time, computed total, payment status/method when available, and safe vehicle summary. Administrator responses additionally include the buyer's name and email.
 
 ## Data model
 
@@ -231,9 +234,9 @@ The Prisma schema defines three models:
 | --- | --- | --- |
 | `User` | `id`, `name`, unique `email`, `passwordHash`, `role`, `createdAt` | One user can have many purchases. Role defaults to `USER`. |
 | `Vehicle` | `id`, `make`, `model`, `category`, nullable `imageUrl`, `price`, `quantity`, timestamps | One vehicle can appear in many purchases. |
-| `Purchase` | `id`, `userId`, `vehicleId`, `quantity`, purchase-time `unitPrice`, `createdAt` | Belongs to one user and one vehicle; indexed by owner/date and vehicle/date. |
+| `Purchase` | `id`, `userId`, `vehicleId`, `quantity`, purchase-time `unitPrice`, nullable `paymentStatus`/`paymentMethod`, `createdAt` | Belongs to one user and one vehicle; indexed by owner/date and vehicle/date. |
 
-Relations use restrictive deletion: accounts and vehicles referenced by purchase history cannot be deleted. The image URL migration is checked in at `backend/prisma/migrations/20261025000000_add_vehicle_image_url/`.
+Relations use restrictive deletion: accounts and vehicles referenced by purchase history cannot be deleted. Demo payment fields are added by `backend/prisma/migrations/20261025120000_add_demo_payment_details/`; nullable fields preserve older rows without inventing payment information. Apply pending migrations only to the intended database through the documented release process.
 
 ## Security
 
@@ -255,10 +258,10 @@ Commands below should be run from the named package directory. The latest safe v
 
 | Category | Command or check | Result and scope |
 | --- | --- | --- |
-| Backend unit/regression | `cd backend && npm run verify:safe` | Passed: 13 Jest suites, 61 tests. Tests use a Prisma mock; this command excludes PostgreSQL integration. |
+| Backend unit/regression | `cd backend && npm run verify:safe` | Passed in this improvement run: 13 Jest suites, 69 tests. Tests use a Prisma mock; this command excludes PostgreSQL integration. |
 | Prisma | Included in `verify:safe`: `npm run db:validate` and `npm run db:generate` | Passed: schema validation and Prisma Client generation. No database connection is made. |
 | Syntax and frontend build | Included in `verify:safe` | Passed: listed backend `node --check` files and Vite production build. |
-| Frontend auth-session tests | `cd frontend && npm test -- --test-reporter=spec` | Passed: 3 Node test cases covering restore, invalid stored data, and logout clearing. |
+| Frontend tests | `cd frontend && npm test` | Passed in this audit: 3 Node test cases covering restore, invalid stored data, and logout clearing. |
 | Git whitespace | Included in `verify:safe`; also `git diff --check` | Passed in the recorded safe run. |
 | PostgreSQL integration | `cd backend && npm run test:integration` | Not verified against a dedicated disposable database. `TEST_REPORT.md` records a historical 1-suite/8-test run against a local development database before the stricter current guard; it is not evidence that the current guarded suite passes against an isolated target. |
 | Live read-only smoke checks | `GET /api/health`, `GET /api/vehicles?page=1&limit=100`, `OPTIONS /api/vehicles` with the frontend origin | Checked 2026-10-25: frontend and API health returned `200`, vehicle list returned `200` with 12 vehicles, and CORS preflight returned `204` for the configured frontend origin. No inventory writes were sent. |
@@ -286,11 +289,11 @@ The deployment preflight and smoke scripts are available as `npm run preflight:d
 
 No genuine application screenshots are included in the repository. Add authentic desktop and mobile captures here when available; no illustrative images are presented as screenshots.
 
-## AI-assisted development
+## My AI Usage
 
-AI coding agents assisted substantially with implementation, test work, and documentation across the backend and frontend milestones. The two-day assessment deadline and concurrent college responsibilities were context for using that assistance. I reviewed changes, investigated reported failures, ran verification commands, and checked selected authentication, authorization, and database-safety behaviors. I do not claim to have manually written every line or to have checked every possible issue.
+OpenAI Codex is identified in the available repository history by `Co-authored-by: Codex <codex@openai.com>` trailers and assisted with implementation, tests, and documentation. This audit also used Codex for source inspection, test-first route compatibility changes, documentation updates, and verification. The repository does not establish the owner's personal reflection on time saved, learning, or manual review; those statements are intentionally not inferred.
 
-The available [AI-use note](backend/PROMPTS.md) is a summary, not a complete raw transcript. Complete prompt and response logs were not available in the project workspace, so no transcript or public conversation link is claimed here. The repository history and recorded evidence support one explicit test-first bcrypt fix; they do not establish that the entire project followed TDD.
+The available [AI-use note](PROMPTS.md) explains the missing raw records; it is not a complete transcript or public conversation link. Complete prompt and response logs were not available in the project workspace, so no transcript or public conversation link is claimed here. The repository history and recorded evidence support specific test-first changes, including the bcrypt boundary fix and the route compatibility additions in this audit; they do not establish that the entire project followed TDD. The owner should complete the reflection prompt in `PROMPTS.md` and attach authentic records if the assessment requires them. For future AI-assisted commits, use the real identity accepted by the assessment; existing history uses `Co-authored-by: Codex <codex@openai.com>`. No commit was created or retroactively changed for this audit.
 
 ## Limitations and next steps
 

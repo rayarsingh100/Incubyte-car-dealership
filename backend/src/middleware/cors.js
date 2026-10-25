@@ -1,4 +1,4 @@
-const ALLOWED_METHODS = new Set(["GET", "POST", "PATCH", "DELETE"]);
+const ALLOWED_METHODS = new Set(["GET", "POST", "PATCH", "PUT", "DELETE"]);
 const ALLOWED_HEADERS = new Set(["authorization", "content-type"]);
 
 function isValidConfiguredOrigin(origin) {

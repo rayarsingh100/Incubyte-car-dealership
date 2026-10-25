@@ -10,6 +10,8 @@ function normalizePurchase(purchase) {
     purchase.quantity < 1 ||
     !Number.isFinite(Number(purchase.unitPrice)) ||
     !Number.isFinite(Number(purchase.totalAmount)) ||
+    (purchase.paymentStatus !== undefined && purchase.paymentStatus !== null && typeof purchase.paymentStatus !== "string") ||
+    (purchase.paymentMethod !== undefined && purchase.paymentMethod !== null && typeof purchase.paymentMethod !== "string") ||
     typeof purchase.createdAt !== "string" ||
     Number.isNaN(Date.parse(purchase.createdAt)) ||
     !purchase.vehicle ||

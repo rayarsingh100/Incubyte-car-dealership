@@ -2,7 +2,6 @@ const adminNavigation = [
   { id: "dashboard", label: "Dashboard", icon: "dashboard" },
   { id: "vehicles", label: "Vehicles", icon: "vehicles" },
   { id: "purchases", label: "Purchases", icon: "purchases" },
-  { id: "settings", label: "Settings", icon: "settings" },
 ];
 
 const customerNavigation = [

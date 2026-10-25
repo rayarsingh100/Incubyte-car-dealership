@@ -39,7 +39,7 @@ function Field({ id, label, value, onChange, type = "text", autoComplete, error,
   );
 }
 
-export default function LoginPage({ onLogin, onRegister, notice, initialEmail = "" }) {
+export default function LoginPage({ onLogin, onRegister, onHome, notice, initialEmail = "" }) {
   const [values, setValues] = useState({ email: initialEmail, password: "" });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState("");
@@ -77,6 +77,7 @@ export default function LoginPage({ onLogin, onRegister, notice, initialEmail = 
       eyebrow="Welcome back"
       title="Sign in to Motorline"
       description="Use your dealership account to continue to the workspace."
+      onHome={onHome}
       footer={<>New to Motorline? <a href="#register" onClick={(event) => { event.preventDefault(); onRegister(); }} className="font-semibold text-[var(--color-champagne-soft)] hover:text-teal-900 focus:outline-none focus:underline">Create an account</a></>}
     >
       {notice && <p role="status" className="mb-5 rounded-xl border border-[#c8d8cc] bg-[var(--color-positive-wash)] px-3.5 py-3 text-sm leading-5 text-[#164e41]">{notice}</p>}

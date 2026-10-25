@@ -40,7 +40,7 @@ The confirmation value must exactly match the database name. The example assumes
 
 The public Render frontend and backend were reachable on 2026-10-25. Read-only checks confirmed the frontend's API base, backend health response, vehicle-list response, and exact-origin CORS preflight. The owner reports the Neon image URL migration is applied and Prisma reports the schema up to date. These checks do not reveal all Render or Neon dashboard settings, the configured proxy-hop count, or backup and retention policies; verify those settings in their dashboards before changing or relying on them.
 
-- **Hosting and API routing:** Host the Vite build as static files and run Express as a Node.js web service. The Vite proxy only works during development. For separate frontend and backend origins, set `FRONTEND_ORIGIN` on the backend to the exact frontend origin. The API allows only that origin, the application's `GET`, `POST`, `PATCH`, and `DELETE` methods, and the `Authorization` and `Content-Type` headers; preflight requests outside that contract are rejected. CORS controls browser access and is not an authorization boundary. Same-origin deployments can leave `FRONTEND_ORIGIN` unset if the host routes `/api` to Express.
+- **Hosting and API routing:** Host the Vite build as static files and run Express as a Node.js web service. The Vite proxy only works during development. For separate frontend and backend origins, set `FRONTEND_ORIGIN` on the backend to the exact frontend origin. The API allows only that origin, the application's `GET`, `POST`, `PATCH`, `PUT`, and `DELETE` methods, and the `Authorization` and `Content-Type` headers; preflight requests outside that contract are rejected. CORS controls browser access and is not an authorization boundary. Same-origin deployments can leave `FRONTEND_ORIGIN` unset if the host routes `/api` to Express.
 - **Frontend configuration:** Set `VITE_API_BASE_URL` at frontend build time. `/api` is suitable only when the hosting layer routes that path to the backend. A separately hosted API requires its HTTPS origin in this variable.
 - **Backend configuration:** Provide `DATABASE_URL` for the production PostgreSQL connection, `JWT_SECRET` for token signing (at least 32 random bytes), `FRONTEND_ORIGIN` when the browser frontend uses a separate origin, and `TRUST_PROXY_HOPS` after verifying the production proxy chain. Render supplies `PORT`; the server binds to `0.0.0.0` and uses port `3000` for local development when `PORT` is absent. `LOGIN_RATE_LIMIT_WINDOW_MS` and `LOGIN_RATE_LIMIT_MAX` configure login throttling; their current defaults are 15 minutes and 5 attempts. Keep backend secrets in the host's secret manager, not in frontend build variables or committed files. `TEST_DATABASE_URL`, `CONFIRM_TEST_DATABASE`, and `TEST_JWT_SECRET` are test-only and must not be used as production settings.
 - **PostgreSQL and migrations:** Use a managed PostgreSQL service with TLS, backups, network restrictions, and limited database privileges. Apply the checked-in Prisma migrations as a controlled release step by running `npm run db:migrate` from `backend/` against the verified production target. Do not run migrations automatically from every application instance. The repository currently uses the same `DATABASE_URL` for runtime queries and Prisma migrations; ensure the release migration connection has DDL privileges. Separate runtime and migration identities are not configured. The repository does not configure a production database, backup policy, or connection pooler.
@@ -113,12 +113,15 @@ Example registration body: `{ "name": "Sam Driver", "email": "sam@example.com", 
 | Method | Path | Access | Success |
 | --- | --- | --- | --- |
 | GET | `/api/vehicles` | Public | `200` with `{ "vehicles": [...], "pagination": { "page", "limit", "total", "pages" } }` |
+| GET | `/api/vehicles/search` | Public | Assignment-compatible alias; supports the same query filters and pagination as `GET /api/vehicles` |
 | GET | `/api/vehicles/:id` | Public | `200` with `{ "vehicle": { ... } }` |
 | POST | `/api/vehicles` | Admin | `201` with `{ "vehicle": { ... } }` |
 | PATCH | `/api/vehicles/:id` | Admin | `200` with `{ "vehicle": { ... } }` |
+| PUT | `/api/vehicles/:id` | Admin | Assignment-compatible alias for the validated vehicle update operation |
 | DELETE | `/api/vehicles/:id` | Admin | `200` with `{ "message": "Vehicle deleted." }` |
 | POST | `/api/vehicles/:id/restock` | Admin | `200` with `{ "vehicle": { ... } }` |
-| POST | `/api/vehicles/:id/purchases` | Authenticated | `201` with `{ "purchase": { ... }, "vehicle": { ... } }` |
+| POST | `/api/vehicles/:id/purchases` | Authenticated | Successful demo payment returns `201` with `{ "purchase": { ... }, "vehicle": { ... } }` |
+| POST | `/api/vehicles/:id/purchase` | Authenticated | Singular-path compatibility alias for the same transactional demo payment operation |
 
 ### Purchase history
 
@@ -129,6 +132,8 @@ Example registration body: `{ "name": "Sam Driver", "email": "sam@example.com", 
 Purchase history accepts `page` (default 1) and `limit` (default 20, maximum 100). It always filters by the authenticated user's ID and orders records by `createdAt` descending, then `id` descending. Each item contains the purchase `id`, `vehicleId`, `quantity`, `unitPrice`, and `createdAt`, a computed `totalAmount`, and the vehicle's `id`, `make`, `model`, and `category`. It does not return user records or password data. Missing, invalid, and expired bearer tokens return `401`.
 
 Vehicle create requires `make`, `model`, `category`, `price`, and `quantity`; optional `imageUrl` may be an HTTP/HTTPS URL up to 2,048 characters or `null`. Patch accepts one or more of those fields; `imageUrl: null` clears the image. Unknown fields are rejected. `make`, `model`, and `category` must be strings, are trimmed, and must contain 1–100 characters. `price` must be a JSON number greater than zero, no greater than `9999999999.99`, with at most two decimal places. Create/update `quantity` must be an integer from 0 through `2147483647`; purchase/restock `quantity` must be an integer from 1 through `2147483647`, and total stock cannot exceed `2147483647`. IDs must be UUIDs.
+
+Purchase requests accept `quantity` and optional `demoPaymentOutcome` (`success`, `failure`, or `cancelled`). The outcome defaults to `success` for compatibility with existing callers. This is only a deterministic demo simulation; no card details or real payments are processed. A failure returns `402`, cancellation returns `409`, and neither writes an order nor changes stock. Success stores `paymentStatus: SUCCEEDED` and `paymentMethod: DEMO_CARD`, calculating the amount from the database vehicle price inside the existing transaction. Admins may list all orders from `GET /api/purchases`, including safe customer name/email fields; regular users receive only their own history.
 
 For admin testing, use the guarded integration suite on a separate disposable `dealership_*_test` database. It registers unique test accounts and elevates only its newly registered test account inside that database. Do not change the role of an existing development account. After the run, it deletes only purchases, vehicles, and users identified as fixtures created by that run; it never resets or truncates tables.
 
@@ -142,15 +147,15 @@ curl -X POST http://localhost:3000/api/vehicles \
   -d '{"make":"Toyota","model":"Corolla","category":"Sedan","price":25000,"quantity":4}'
 ```
 
-Example purchase request:
+Example purchase request (the singular `/purchase` path is also supported):
 
 ```sh
-curl -X POST http://localhost:3000/api/vehicles/<vehicle-id>/purchases \
+curl -X POST http://localhost:3000/api/vehicles/<vehicle-id>/purchase \
   -H 'Authorization: Bearer <jwt>' -H 'Content-Type: application/json' \
-  -d '{"quantity":1}'
+  -d '{"quantity":1,"demoPaymentOutcome":"success"}'
 ```
 
-Purchases decrement stock and record the unit price in one Prisma transaction. A missing vehicle returns `404`; insufficient stock returns `409`. Vehicles with purchase history cannot be deleted and return `409`. Invalid request/query/ID returns `400`, missing or invalid authentication returns `401`, and non-admin writes return `403`. Unexpected failures return a generic `500` without internal details.
+Successful demo purchases decrement stock and record the stored unit price and payment status in one Prisma transaction. The additive migration `prisma/migrations/20261025120000_add_demo_payment_details/` is required before using this version against a database; it has not been applied by this audit. A missing vehicle returns `404`; insufficient stock returns `409`. Vehicles with purchase history cannot be deleted and return `409`. Invalid request/query/ID returns `400`, missing or invalid authentication returns `401`, and non-admin writes return `403`. Unexpected failures return a generic `500` without internal details.
 
 ## Health
 

@@ -11,7 +11,8 @@ const formatTotalAmount = (unitPrice, quantity) => {
 const listPurchases = async (req, res) => {
   const page = parsePositiveInteger(req.query.page, "page", 1, 1000000);
   const limit = parsePositiveInteger(req.query.limit, "limit", 20, 100);
-  const where = { userId: req.user.id };
+  const isAdmin = req.user.role === "ADMIN";
+  const where = isAdmin ? {} : { userId: req.user.id };
   const [records, total] = await Promise.all([
     prisma.purchase.findMany({
       where,
@@ -23,8 +24,11 @@ const listPurchases = async (req, res) => {
         vehicleId: true,
         quantity: true,
         unitPrice: true,
+        paymentStatus: true,
+        paymentMethod: true,
         createdAt: true,
         vehicle: { select: { id: true, make: true, model: true, category: true } },
+        ...(isAdmin ? { user: { select: { id: true, name: true, email: true } } } : {}),
       },
     }),
     prisma.purchase.count({ where }),

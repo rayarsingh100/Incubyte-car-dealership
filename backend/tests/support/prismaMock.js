@@ -99,6 +99,10 @@ const prisma = {
           const vehicle = vehicles.find((item) => item.id === purchase.vehicleId);
           result.vehicle = selectFields(vehicle, select.vehicle.select);
         }
+        if (select?.user) {
+          const user = users.find((item) => item.id === purchase.userId);
+          result.user = selectFields(user, select.user.select);
+        }
         return result;
       }));
     }),

@@ -68,6 +68,45 @@ describe("vehicle inventory", () => {
     expect((await request(app).get(`/api/vehicles/${id}`)).status).toBe(404);
   });
 
+  test("supports the assignment GET /search route with the existing inventory filters", async () => {
+    await createVehicle(adminToken, vehicleData);
+    await createVehicle(adminToken, { make: "Honda", model: "Civic", category: "Sedan", price: 22000, quantity: 3 });
+
+    const response = await request(app).get("/api/vehicles/search?make=Toyota&model=Corolla&category=Sedan&minPrice=20000&maxPrice=30000");
+
+    expect(response.status).toBe(200);
+    expect(response.body.vehicles).toHaveLength(1);
+    expect(response.body.vehicles[0]).toMatchObject({ make: "Toyota", model: "Corolla", category: "Sedan" });
+  });
+
+  test("supports PUT vehicle updates while retaining administrator authorization", async () => {
+    const vehicle = await createVehicle();
+    const url = `/api/vehicles/${vehicle.body.vehicle.id}`;
+
+    const updated = await request(app).put(url).set("Authorization", `Bearer ${adminToken}`).send({ price: 24000 });
+    const denied = await request(app).put(url).set("Authorization", `Bearer ${userToken}`).send({ price: 20000 });
+
+    expect(updated.status).toBe(200);
+    expect(updated.body.vehicle.price).toBe("24000.00");
+    expect(denied.status).toBe(403);
+    expect(prisma.getVehicle(vehicle.body.vehicle.id).price).toBe("24000.00");
+  });
+
+  test("supports the singular purchase route with the existing stock transaction", async () => {
+    const vehicle = await createVehicle(adminToken, { ...vehicleData, quantity: 2 });
+    const response = await request(app)
+      .post(`/api/vehicles/${vehicle.body.vehicle.id}/purchase`)
+      .set("Authorization", `Bearer ${userToken}`)
+      .send({ quantity: 1 });
+
+    expect(response.status).toBe(201);
+    expect(response.body.vehicle.quantity).toBe(1);
+    expect(prisma.getVehicle(vehicle.body.vehicle.id).quantity).toBe(1);
+    expect(prisma.getPurchaseCount()).toBe(1);
+    const inventory = await request(app).get("/api/vehicles?page=1&limit=20");
+    expect(inventory.body.vehicles.find(({ id }) => id === vehicle.body.vehicle.id).quantity).toBe(1);
+  });
+
   test("accepts valid optional image URLs on create and update, including clearing an image", async () => {
     const imageUrl = "https://images.example.test/cars/toyota.jpg";
     const created = await createVehicle(adminToken, { ...vehicleData, imageUrl });
@@ -148,6 +187,59 @@ describe("vehicle inventory", () => {
     const unavailable = await request(app).post(url).set("Authorization", `Bearer ${userToken}`).send({ quantity: 5 });
     expect(unavailable.status).toBe(409);
     expect(prisma.getVehicle(vehicle.body.vehicle.id).quantity).toBe(4);
+    expect(prisma.getPurchaseCount()).toBe(0);
+  });
+
+  test("demo payment failure and cancellation leave stock and completed orders unchanged", async () => {
+    const vehicle = await createVehicle(adminToken, { ...vehicleData, quantity: 3 });
+    const url = `/api/vehicles/${vehicle.body.vehicle.id}/purchase`;
+
+    const failure = await request(app).post(url).set("Authorization", `Bearer ${userToken}`).send({ quantity: 1, demoPaymentOutcome: "failure" });
+    const cancellation = await request(app).post(url).set("Authorization", `Bearer ${userToken}`).send({ quantity: 1, demoPaymentOutcome: "cancelled" });
+
+    expect(failure.status).toBe(402);
+    expect(failure.body.error.code).toBe("DEMO_PAYMENT_FAILED");
+    expect(cancellation.status).toBe(409);
+    expect(cancellation.body.error.code).toBe("DEMO_PAYMENT_CANCELLED");
+    expect(prisma.getVehicle(vehicle.body.vehicle.id).quantity).toBe(3);
+    expect(prisma.getPurchaseCount()).toBe(0);
+  });
+
+  test("successful demo payment uses the stored price and creates the order with an atomic stock decrement", async () => {
+    const vehicle = await createVehicle(adminToken, { ...vehicleData, price: 12345.67, quantity: 3 });
+    const response = await request(app)
+      .post(`/api/vehicles/${vehicle.body.vehicle.id}/purchase`)
+      .set("Authorization", `Bearer ${userToken}`)
+      .send({ quantity: 2, demoPaymentOutcome: "success", unitPrice: 0, totalAmount: 0 });
+
+    expect(response.status).toBe(201);
+    expect(response.body.purchase).toMatchObject({
+      quantity: 2,
+      unitPrice: "12345.67",
+      paymentStatus: "SUCCEEDED",
+      paymentMethod: "DEMO_CARD",
+    });
+    expect(response.body.purchase.totalAmount).toBe("24691.34");
+    expect(response.body.vehicle.quantity).toBe(1);
+    expect(prisma.getVehicle(vehicle.body.vehicle.id).quantity).toBe(1);
+    expect(prisma.getPurchaseCount()).toBe(1);
+    expect(prisma.purchase.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        unitPrice: "12345.67",
+        paymentStatus: "SUCCEEDED",
+        paymentMethod: "DEMO_CARD",
+      }),
+    }));
+  });
+
+  test("rejects unknown demo payment outcomes and keeps unauthenticated checkout protected", async () => {
+    const vehicle = await createVehicle(adminToken, { ...vehicleData, quantity: 2 });
+    const url = `/api/vehicles/${vehicle.body.vehicle.id}/purchase`;
+    expect((await request(app).post(url).send({ quantity: 1, demoPaymentOutcome: "maybe" })).status).toBe(401);
+    const invalid = await request(app).post(url).set("Authorization", `Bearer ${userToken}`).send({ quantity: 1, demoPaymentOutcome: "maybe" });
+    expect(invalid.status).toBe(400);
+    expect(prisma.getVehicle(vehicle.body.vehicle.id).quantity).toBe(2);
+    expect(prisma.getPurchaseCount()).toBe(0);
   });
 
   test("prevents overselling across concurrent purchase attempts", async () => {

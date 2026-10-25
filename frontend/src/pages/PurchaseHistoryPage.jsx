@@ -5,7 +5,7 @@ import { formatNumber, formatPreciseCurrency } from "../utils/formatters.js";
 
 const PAGE_SIZE = 10;
 
-export default function PurchaseHistoryPage({ token }) {
+export default function PurchaseHistoryPage({ token, isAdmin = false }) {
   const [page, setPage] = useState(1);
   const [reloadVersion, setReloadVersion] = useState(0);
   const [history, setHistory] = useState(null);
@@ -35,10 +35,10 @@ export default function PurchaseHistoryPage({ token }) {
     <div className="mx-auto max-w-[1100px]">
       <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#d8c99f] bg-[var(--color-gold-wash)] px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-[var(--color-champagne-soft)] uppercase">
         <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-sage)]" />
-        Customer account
+        {isAdmin ? "Administrator view" : "Customer account"}
       </div>
-      <h1 className="font-display text-[34px] tracking-[-0.025em] text-[var(--color-text)] sm:text-[42px]">Purchase history</h1>
-      <p className="mt-2 text-sm leading-6 text-[#737a73]">Review purchases made with your account.</p>
+      <h1 className="font-display text-[34px] tracking-[-0.025em] text-[var(--color-text)] sm:text-[42px]">{isAdmin ? "Customer orders" : "Purchase history"}</h1>
+      <p className="mt-2 text-sm leading-6 text-[#737a73]">{isAdmin ? "Completed customer purchases recorded by the dealership." : "Review purchases made with your account."}</p>
 
       {isLoading ? (
         <section role="status" className="mt-8 flex min-h-64 flex-col items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-panel)] text-sm text-[var(--color-text-muted)]">
@@ -59,8 +59,8 @@ export default function PurchaseHistoryPage({ token }) {
       ) : purchases.length === 0 ? (
         <section className="mt-8 flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-[#d3d0c6] bg-[var(--color-panel)] px-5 text-center">
           <Icon name="purchases" className="h-7 w-7 text-[#737a73]" />
-          <h2 className="mt-4 text-sm font-semibold text-[#202520]">No purchases yet</h2>
-          <p className="mt-1.5 max-w-md text-xs leading-5 text-[#737a73]">Purchases made with your account will appear here.</p>
+          <h2 className="mt-4 text-sm font-semibold text-[#202520]">{isAdmin ? "No customer orders yet" : "No purchases yet"}</h2>
+          <p className="mt-1.5 max-w-md text-xs leading-5 text-[#737a73]">{isAdmin ? "Completed customer demo purchases will appear here." : "Purchases made with your account will appear here."}</p>
         </section>
       ) : (
         <>
@@ -72,12 +72,17 @@ export default function PurchaseHistoryPage({ token }) {
                     <p className="text-[10px] font-semibold tracking-[0.12em] text-[#737a73] uppercase">{purchase.vehicle.category}</p>
                     <h2 className="mt-1 text-base font-semibold text-[var(--color-text)]">{purchase.vehicle.make} {purchase.vehicle.model}</h2>
                     <p className="mt-1 text-xs text-[#737a73]">Purchased {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(purchase.createdAt))}</p>
+                    {isAdmin && purchase.user && <p className="mt-1 text-xs text-[var(--color-text-muted)]">Customer: {purchase.user.name} · {purchase.user.email}</p>}
+                    <p className="mt-1 break-all text-[10px] text-[var(--color-text-subtle)]">Order {purchase.id}</p>
                   </div>
                   <p className="text-sm font-semibold text-[var(--color-text)]">{formatPreciseCurrency(Number(purchase.totalAmount))}</p>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-[#e5e2d9] pt-3 text-xs text-[var(--color-text-muted)]">
                   <span>{formatNumber(purchase.quantity)} {purchase.quantity === 1 ? "vehicle" : "vehicles"}</span>
                   <span>{formatPreciseCurrency(Number(purchase.unitPrice))} per vehicle</span>
+                  <span className="rounded-full bg-[var(--color-positive-wash)] px-2.5 py-1 font-medium text-[#164e41]">
+                    {purchase.paymentStatus === "SUCCEEDED" ? `Completed · ${purchase.paymentMethod === "DEMO_CARD" ? "Demo Card Payment" : "Payment"}` : "Completed · payment details unavailable"}
+                  </span>
                 </div>
               </article>
             ))}

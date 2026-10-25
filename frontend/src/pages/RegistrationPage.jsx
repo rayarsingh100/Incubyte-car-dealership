@@ -11,7 +11,7 @@ const fields = [
   { name: "confirmation", label: "Confirm password", type: "password", autoComplete: "new-password" },
 ];
 
-export default function RegistrationPage({ onRegistered, onLogin }) {
+export default function RegistrationPage({ onRegistered, onLogin, onHome }) {
   const [values, setValues] = useState({ name: "", email: "", password: "", confirmation: "" });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState("");
@@ -54,6 +54,7 @@ export default function RegistrationPage({ onRegistered, onLogin }) {
       eyebrow="Create your account"
       title="Join Motorline"
       description="Create a customer account to access the dealership workspace."
+      onHome={onHome}
       footer={<>Already registered? <a href="#login" onClick={(event) => { event.preventDefault(); onLogin(); }} className="font-semibold text-[var(--color-champagne-soft)] hover:text-teal-900 focus:outline-none focus:underline">Back to sign in</a></>}
     >
       {apiError && <p role="alert" className="mb-5 rounded-xl border border-[#e6c4bf] bg-[var(--color-danger-wash)] px-3.5 py-3 text-sm leading-5 text-[#9f3e36]">{apiError}</p>}

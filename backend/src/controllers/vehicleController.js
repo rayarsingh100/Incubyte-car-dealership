@@ -28,6 +28,13 @@ const validateImageUrl = (value) => {
   return imageUrl;
 };
 
+const formatTotalAmount = (unitPrice, quantity) => {
+  const [whole, fraction = ""] = String(unitPrice).split(".");
+  const cents = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0").slice(0, 2));
+  const totalCents = cents * BigInt(quantity);
+  return `${totalCents / 100n}.${String(totalCents % 100n).padStart(2, "0")}`;
+};
+
 const vehicleData = (body, partial) => {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     throw new HttpError(400, "INVALID_INPUT", "A JSON object is required.");
@@ -140,8 +147,17 @@ const restockVehicle = async (req, res) => {
 
 const purchaseVehicle = async (req, res) => {
   const vehicleId = requireVehicleId(req.params.id);
-  const { quantity } = req.body || {};
+  const { quantity, demoPaymentOutcome = "success" } = req.body || {};
   validateQuantity(quantity);
+  if (!["success", "failure", "cancelled"].includes(demoPaymentOutcome)) {
+    throw new HttpError(400, "INVALID_PAYMENT_OUTCOME", "demoPaymentOutcome must be success, failure, or cancelled.");
+  }
+  if (demoPaymentOutcome === "failure") {
+    throw new HttpError(402, "DEMO_PAYMENT_FAILED", "The demo payment was declined. No order was placed.");
+  }
+  if (demoPaymentOutcome === "cancelled") {
+    throw new HttpError(409, "DEMO_PAYMENT_CANCELLED", "The demo payment was cancelled. No order was placed.");
+  }
   const result = await prisma.$transaction(async (transaction) => {
     const updated = await transaction.vehicle.updateMany({
       where: { id: vehicleId, quantity: { gte: quantity } },
@@ -154,9 +170,16 @@ const purchaseVehicle = async (req, res) => {
     }
     const vehicle = await transaction.vehicle.findUnique({ where: { id: vehicleId } });
     const purchase = await transaction.purchase.create({
-      data: { userId: req.user.id, vehicleId, quantity, unitPrice: vehicle.price },
+      data: {
+        userId: req.user.id,
+        vehicleId,
+        quantity,
+        unitPrice: vehicle.price,
+        paymentStatus: "SUCCEEDED",
+        paymentMethod: "DEMO_CARD",
+      },
     });
-    return { purchase, vehicle };
+    return { purchase: { ...purchase, totalAmount: formatTotalAmount(purchase.unitPrice, purchase.quantity) }, vehicle };
   });
   return res.status(201).json(result);
 };

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import AppLayout from "./layouts/AppLayout.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import VehiclesPage from "./pages/VehiclesPage.jsx";
-import SectionPlaceholder from "./components/SectionPlaceholder.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegistrationPage from "./pages/RegistrationPage.jsx";
 import CustomerHomePage from "./pages/CustomerHomePage.jsx";
@@ -10,21 +9,6 @@ import PurchaseHistoryPage from "./pages/PurchaseHistoryPage.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { getRoleAccess } from "./utils/roleAccess.js";
 import { useVehicleInventory } from "./hooks/useVehicleInventory.js";
-
-const sectionDetails = {
-  vehicles: {
-    title: "Vehicles",
-    description: "Vehicle inventory management will be available in the next milestone.",
-  },
-  purchases: {
-    title: "Purchases",
-    description: "Purchase history and order details have not been implemented yet.",
-  },
-  settings: {
-    title: "Settings",
-    description: "Workspace settings have not been implemented yet.",
-  },
-};
 
 export default function App() {
   const { user, token, login, logout } = useAuth();
@@ -55,6 +39,7 @@ export default function App() {
     if (authPage === "register") {
       return (
         <RegistrationPage
+          onHome={() => navigateAuthPage("login")}
           onRegistered={(email, name) => {
             setRegisteredEmail(email);
             setRegistrationNotice(`Account created for ${name}. Sign in to continue.`);
@@ -67,6 +52,7 @@ export default function App() {
 
     return (
       <LoginPage
+        onHome={() => navigateAuthPage("login")}
         onLogin={async (credentials) => {
           const authenticatedUser = await login(credentials);
           setActiveAdminSection("dashboard");
@@ -96,6 +82,13 @@ export default function App() {
     );
   }
   const activeSection = roleAccess.experience === "admin" ? activeAdminSection : activeCustomerSection;
+  const navigateToSection = (section) => {
+    if (roleAccess.experience === "admin") setActiveAdminSection(section);
+    else setActiveCustomerSection(section);
+    if (section === "vehicles" || section === "dashboard" || section === "customer-home") {
+      inventory.refresh().catch(() => {});
+    }
+  };
 
   return (
     <AppLayout
@@ -104,7 +97,7 @@ export default function App() {
       user={user}
       accountLabel={roleAccess.accountLabel}
       onLogout={logout}
-      onNavigate={roleAccess.experience === "admin" ? setActiveAdminSection : setActiveCustomerSection}
+      onNavigate={navigateToSection}
       showSearch={roleAccess.experience === "customer" && activeSection === "customer-home"}
       searchValue={customerSearch}
       onSearchChange={setCustomerSearch}
@@ -123,6 +116,8 @@ export default function App() {
           search={customerSearch}
           onSearchChange={setCustomerSearch}
         />
+      ) : isAdmin && activeSection === "purchases" ? (
+        <PurchaseHistoryPage token={token} isAdmin />
       ) : inventory.vehicles === null ? (
         <section className="mx-auto flex min-h-[45vh] max-w-xl flex-col items-center justify-center px-5 text-center">
           {inventory.isLoading ? (
@@ -151,9 +146,7 @@ export default function App() {
           onDeleteVehicle={inventory.deleteVehicle}
           onRestockVehicle={inventory.restockVehicle}
         />
-      ) : (
-        <SectionPlaceholder {...sectionDetails[activeSection]} />
-      )}
+      ) : null}
     </AppLayout>
   );
 }

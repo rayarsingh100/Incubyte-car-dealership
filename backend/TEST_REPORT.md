@@ -1,5 +1,26 @@
 # Backend Verification Report
 
+## Demo checkout and administrator orders (2026-10-25)
+
+- Red: focused tests reproduced demo failure still returning `201`, the missing authoritative `totalAmount`, and administrators receiving zero orders from the customer-scoped endpoint.
+- Green: `npm test -- --runInBand tests/vehicles.test.js tests/purchases.test.js` passed (2 suites, 29 tests) after simulating outcomes before the transaction, adding persisted success payment fields, and applying role-based purchase list scoping.
+- Successful payment tests verify database-stored pricing wins over submitted price/total fields, order/payment fields are returned, and stock is decremented and visible through the inventory list. Simulated failure/cancellation preserve stock and create no completed purchase. Invalid outcome and unauthenticated cases are covered.
+- Admin order tests verify all customers' completed purchases and safe customer details; existing customer history tests verify the user filter is not overridden by a query parameter.
+- Added the additive migration `20261025120000_add_demo_payment_details`; it has not been applied. Existing purchase rows retain null payment metadata, so the UI identifies their payment details as unavailable.
+- No database integration tests, database connections, or schema changes were run against any database. Apply the migration only after verifying the intended database target.
+- Full `npm run verify:safe`: passed, 13 suites and 69 tests; Prisma validation and generation, configured syntax checks, frontend production build, and diff checks passed. `cd frontend && npm test`: 3 tests passed; `cd frontend && npm run build`: passed. No dedicated disposable database was configured, so the database integration suite was skipped.
+
+## TDD kata audit and assignment-route compatibility (2026-10-25)
+
+- Red: added focused tests for `GET /api/vehicles/search`, admin-authorized `PUT /api/vehicles/:id`, singular `POST /api/vehicles/:id/purchase`, and CORS allowing `PUT`. Before implementation, all four gaps failed: search returned `400` because `search` was parsed as an ID, `PUT` and singular purchase returned `404`, and the CORS method list omitted `PUT`.
+- Green: after routing the compatible paths to the existing validated list/update/purchase handlers and allowing `PUT` in CORS, `npm test -- --runInBand tests/vehicles.test.js tests/cors.test.js` passed (2 suites, 28 tests).
+- `npm run verify:safe`: passed (13 suites, 65 tests); Prisma validation and client generation passed; configured syntax checks, frontend production build, and Git diff checks passed. This verification does not connect to PostgreSQL.
+- `cd frontend && npm test`: passed (3 tests). `cd frontend && npm run build`: passed.
+- An initial `verify:safe` attempt inside the restricted command sandbox failed because its mock HTTP tests could not bind localhost (`listen EPERM`). The same command was rerun with local socket access and passed.
+- `npm run test:integration` was not run: no dedicated `TEST_DATABASE_URL` or exact confirmation is configured. No database connection, mutation, migration, or seed was performed.
+- The test-first sequence above is evidenced by the observed failing focused run followed by the passing focused run in this audit. It does not establish project-wide Red-Green-Refactor. Existing history and reports support only the specific cycles they document; no history was changed.
+- No lint or type-check scripts are configured in the package manifests. Frontend tests currently cover authentication session persistence only; broader component/browser workflows remain unverified.
+
 ## Milestone 9 safe integration readiness (2026-10-25)
 
 - `npm test`: passed, 6 suites and 25 tests, using the in-memory Prisma mock.

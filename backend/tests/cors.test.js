@@ -59,9 +59,20 @@ test("answers allowed preflight with only supported methods and headers", async 
 
   expect(response.status).toBe(204);
   expect(response.headers["access-control-allow-origin"]).toBe(process.env.FRONTEND_ORIGIN);
-  expect(response.headers["access-control-allow-methods"]).toBe("GET, POST, PATCH, DELETE");
+  expect(response.headers["access-control-allow-methods"]).toBe("GET, POST, PATCH, PUT, DELETE");
   expect(response.headers["access-control-allow-headers"]).toBe("Authorization, Content-Type");
   expect(response.headers["access-control-allow-credentials"]).toBeUndefined();
+});
+
+test("allows the PUT preflight needed by the vehicle update route", async () => {
+  const response = await request(app)
+    .options("/api/vehicles/00000000-0000-4000-8000-000000000001")
+    .set("Origin", process.env.FRONTEND_ORIGIN)
+    .set("Access-Control-Request-Method", "PUT")
+    .set("Access-Control-Request-Headers", "authorization, content-type");
+
+  expect(response.status).toBe(204);
+  expect(response.headers["access-control-allow-methods"]).toContain("PUT");
 });
 
 test("rejects disallowed origins and preflight methods or headers", async () => {
@@ -72,7 +83,7 @@ test("rejects disallowed origins and preflight methods or headers", async () => 
   const disallowedMethod = await request(app)
     .options("/api/vehicles")
     .set("Origin", process.env.FRONTEND_ORIGIN)
-    .set("Access-Control-Request-Method", "PUT");
+    .set("Access-Control-Request-Method", "TRACE");
   const disallowedHeader = await request(app)
     .options("/api/vehicles")
     .set("Origin", process.env.FRONTEND_ORIGIN)

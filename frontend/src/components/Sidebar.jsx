@@ -17,13 +17,15 @@ export default function Sidebar({ activeSection, navigation, onNavigate, isMobil
         }`}
       >
         <div className="flex h-[76px] items-center gap-3 border-b border-[var(--color-border)] px-5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-ink)] p-0.5">
-            <img src="/favicon.svg" alt="" aria-hidden="true" className="h-full w-full object-contain" />
-          </div>
-          <div>
-            <p className="font-display text-[17px] font-medium tracking-[0.04em] text-[#202520]">Motorline</p>
-            <p className="mt-0.5 text-[10px] font-medium tracking-[0.2em] text-[var(--color-text-subtle)] uppercase">Automotive</p>
-          </div>
+          <button type="button" aria-label="Motorline home" onClick={() => { onNavigate(navigation[0]?.id || "dashboard"); onClose(); }} className="flex min-w-0 items-center gap-3 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c5a15a]">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-ink)] p-0.5">
+              <img src="/favicon.svg" alt="" aria-hidden="true" className="h-full w-full object-contain" />
+            </span>
+            <span className="min-w-0">
+              <p className="font-display text-[17px] font-medium tracking-[0.04em] text-[#202520]">Motorline</p>
+              <p className="mt-0.5 text-[10px] font-medium tracking-[0.2em] text-[var(--color-text-subtle)] uppercase">Automotive</p>
+            </span>
+          </button>
           <button
             type="button"
             aria-label="Close navigation menu"

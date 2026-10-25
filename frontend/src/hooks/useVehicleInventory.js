@@ -53,9 +53,9 @@ export function useVehicleInventory(token, enabled) {
     return result;
   };
 
-  const purchaseVehicle = async (id, quantity) => {
+  const purchaseVehicle = async (id, quantity, demoPaymentOutcome = "success") => {
     try {
-      const result = await purchaseVehicleRequest(token, id, quantity);
+      const result = await purchaseVehicleRequest(token, id, quantity, demoPaymentOutcome);
       let inventoryRefreshed = true;
       try {
         await refresh();

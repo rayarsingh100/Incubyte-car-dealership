@@ -68,6 +68,8 @@ describe("GET /api/purchases", () => {
       quantity: 2,
       unitPrice: "24999.95",
       totalAmount: "49999.90",
+      paymentStatus: "SUCCEEDED",
+      paymentMethod: "DEMO_CARD",
       vehicle: { id: firstVehicle.id, make: "Toyota", model: "Corolla", category: "Sedan" },
     });
     expect(response.body.purchases[0]).toHaveProperty("createdAt");
@@ -80,6 +82,32 @@ describe("GET /api/purchases", () => {
       where: { userId: session.user.id },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     }));
+  });
+
+  test("allows administrators to view all completed purchases with buyer details", async () => {
+    const [customer, otherCustomer] = await Promise.all([registerAndLogin(userData), registerAndLogin(otherUserData)]);
+    await registerAndLogin({ name: "History Admin", email: "history-admin@example.com", password: "SecurePass123!" });
+    prisma.setRole("history-admin@example.com", "ADMIN");
+    const admin = await request(app).post("/api/auth/login").send({ email: "history-admin@example.com", password: "SecurePass123!" });
+    const vehicle = await createVehicle(admin.body.token);
+    await request(app).post(`/api/vehicles/${vehicle.id}/purchase`).set("Authorization", `Bearer ${customer.token}`).send({ quantity: 1 });
+    await request(app).post(`/api/vehicles/${vehicle.id}/purchase`).set("Authorization", `Bearer ${otherCustomer.token}`).send({ quantity: 2 });
+
+    const response = await request(app).get("/api/purchases").set("Authorization", `Bearer ${admin.body.token}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.purchases).toHaveLength(2);
+    expect(response.body.purchases.map(({ user }) => user.email).sort()).toEqual([userData.email, otherUserData.email].sort());
+    expect(response.body.purchases[0]).toMatchObject({
+      vehicle: { make: "Toyota", model: "Corolla" },
+      unitPrice: "24999.95",
+      totalAmount: "49999.90",
+      paymentStatus: "SUCCEEDED",
+      paymentMethod: "DEMO_CARD",
+      user: { name: otherUserData.name, email: otherUserData.email },
+    });
+    expect(response.body.purchases[0]).not.toHaveProperty("user.passwordHash");
+    expect(prisma.purchase.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: {} }));
   });
 
   test("validates pagination parameters", async () => {
