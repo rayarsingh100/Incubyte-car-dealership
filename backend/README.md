@@ -36,6 +36,52 @@ npm run test:integration
 
 The confirmation value must exactly match the database name. The example assumes local PostgreSQL authentication is configured. Never use the development database URL for these commands. Integration tests remove only records tied to their unique fixtures; they never reset or truncate the database. See `TEST_REPORT.md` for completed checks and limitations.
 
+## Production deployment notes
+
+This section is a deployment plan, not a configured or verified production environment. The Render and Neon setup below has not been provisioned.
+
+- **Hosting and API routing:** Host the Vite build as static files and run Express as a Node.js web service. The Vite proxy only works during development. For separate frontend and backend origins, set `FRONTEND_ORIGIN` on the backend to the exact frontend origin. The API allows only that origin, the application's `GET`, `POST`, `PATCH`, and `DELETE` methods, and the `Authorization` and `Content-Type` headers; preflight requests outside that contract are rejected. CORS controls browser access and is not an authorization boundary. Same-origin deployments can leave `FRONTEND_ORIGIN` unset if the host routes `/api` to Express.
+- **Frontend configuration:** Set `VITE_API_BASE_URL` at frontend build time. `/api` is suitable only when the hosting layer routes that path to the backend. A separately hosted API requires its HTTPS origin in this variable.
+- **Backend configuration:** Provide `DATABASE_URL` for the production PostgreSQL connection, `JWT_SECRET` for token signing (at least 32 random bytes), `FRONTEND_ORIGIN` when the browser frontend uses a separate origin, and the host-provided `PORT`. The server binds to `0.0.0.0` and uses port `3000` for local development when `PORT` is absent. `LOGIN_RATE_LIMIT_WINDOW_MS` and `LOGIN_RATE_LIMIT_MAX` configure login throttling; their current defaults are 15 minutes and 5 attempts. Keep backend secrets in the host's secret manager, not in frontend build variables or committed files. `TEST_DATABASE_URL`, `CONFIRM_TEST_DATABASE`, and `TEST_JWT_SECRET` are test-only and must not be used as production settings.
+- **PostgreSQL and migrations:** Use a managed PostgreSQL service with TLS, backups, network restrictions, and limited database privileges. Apply the checked-in Prisma migrations as a controlled release step by running `npm run db:migrate` from `backend/` against the verified production target. Do not run migrations automatically from every application instance. The repository currently uses the same `DATABASE_URL` for runtime queries and Prisma migrations; ensure the release migration connection has DDL privileges. Separate runtime and migration identities are not configured. The repository does not configure a production database, backup policy, or connection pooler.
+- **JWT operations:** Generate `JWT_SECRET` with a cryptographically secure random generator and provision it through a secret manager. The backend checks only that it is at least 32 UTF-8 bytes; that check does not establish randomness. Tokens expire after one hour. There is no refresh or server-side revocation mechanism, so secret rotation invalidates existing sessions.
+- **Rate limiting and proxies:** The current limiter uses an in-memory per-process store, which is suitable only for a single instance with the proxy/IP behavior verified. Multi-instance deployment needs a shared rate-limit store. Express `trust proxy` is not configured or exposed as an environment setting; a proxied deployment needs a deliberate code/configuration change for its known proxy topology so client IP rate limiting cannot be spoofed.
+- **Health and readiness:** `GET /api/health` is a static liveness response and does not check PostgreSQL. Do not use it alone as a database-readiness signal. A production orchestrator should verify database readiness through a separate health check before sending database-dependent traffic; this repository does not yet implement that check.
+- **Admin provisioning:** Public registration always creates `USER` accounts. There is no production-safe admin provisioning command. Before a demo requiring admin inventory operations, add an explicitly invoked, one-time CLI workflow that verifies the dedicated demo database target, accepts the initial admin credentials privately, hashes the password, and creates only that admin account. Do not add public admin registration or reuse `scripts/create-admin-test-user.js`, which is restricted to the local test database.
+- **Build and start:** Build the frontend with `npm ci && npm run build` from `frontend/`, then serve `frontend/dist`. Install backend dependencies with `npm ci`, generate Prisma Client with `npm run db:generate`, apply migrations in the controlled release step, then start the service with `npm start` from `backend/`.
+- **Deployment smoke checks:** Verify the frontend loads, the host routes `/api/health` and a read-only `GET /api/vehicles?page=1&limit=1` to Express, and login works once with a provisioned staging account. Do not use real customer credentials or perform purchase/inventory mutations as smoke tests.
+
+Choose hosting regions, domains, and any paid capacity only after comparing current plans and operational requirements; this repository does not include provider configuration or cost estimates.
+
+### Render + Neon portfolio demo procedure
+
+The following is a setup checklist only. No Render or Neon resources have been created, and no migration has been run.
+
+1. **Create an isolated Neon demo project after approval.** Use a new project and database reserved for this application (for example, database name `dealership_demo`). Do not use local `dealership_db` or another existing application database. In the Neon dashboard, verify the project, branch, and database name before copying its connection URL. Store the URL privately.
+2. **Apply migrations manually to Neon before deploying the services.** Render's free web service does not provide a pre-deploy command. From `backend/` in a trusted Bash terminal, install dependencies with `npm ci`, then run the following. It prompts for the URL without echoing it, checks that the target is Neon and that its database name matches the dashboard value you enter, then runs only the checked-in deployment migrations. The subshell keeps the URL out of the parent shell environment; Prisma's dotenv loading does not override the explicitly exported value.
+
+   ```bash
+   cd ~/projects/incubyte-car-dealership/backend
+   npm ci
+   (
+     set -eu
+     read -rsp 'Neon DATABASE_URL: ' DATABASE_URL
+     printf '\n'
+     export DATABASE_URL
+     read -rp 'Expected Neon database name from the dashboard: ' EXPECTED_DEMO_DATABASE
+     export EXPECTED_DEMO_DATABASE
+     node -e 'try { const u = new URL(process.env.DATABASE_URL); const db = decodeURIComponent(u.pathname.slice(1).split("/")[0]); if (!u.hostname.endsWith(".neon.tech") || db !== process.env.EXPECTED_DEMO_DATABASE) throw new Error(); console.log(`Verified Neon migration target: ${u.hostname}/${db}`); } catch { console.error("Refusing migration: invalid URL, Neon host, or expected database name did not match."); process.exit(1); }'
+     npm run db:migrate
+   )
+   ```
+
+   Do not run this command until the displayed target matches the intended Neon project and database. It does not modify `backend/.env`; it applies schema migrations, not seed data.
+3. **Create the backend Render Web Service.** Select the repository and `main` branch; set Root Directory to `backend`, Runtime to Node, Plan to Free, Build Command to `npm ci && npm run db:generate`, Start Command to `npm start`, and Health Check Path to `/api/health`. Pin `NODE_VERSION` to `22.22.0`. Add backend environment variables `DATABASE_URL` (the Neon URL) and `JWT_SECRET` (random, at least 32 bytes). Render supplies `PORT`. The Prisma build command reads `DATABASE_URL`, so configure it before the build. Never place backend secrets in the static site's environment. Do not open the demo to users yet.
+4. **Create the frontend Render Static Site.** Select the same repository and branch; set Root Directory to `frontend`, Build Command to `npm ci && npm run build`, and Publish Directory to `dist`. Set `NODE_VERSION` to `22.22.0` and build-time `VITE_API_BASE_URL` to `https://<backend-service>.onrender.com/api`. This value is public and is compiled into the frontend bundle. Record the static site's exact HTTPS origin. If the backend URL changes, update the API URL and rebuild the static site.
+5. **Finish cross-origin configuration before opening the demo.** Add `FRONTEND_ORIGIN` to the backend service using the exact static-site origin from step 4, then redeploy the backend. Check `/api/health`, then make a read-only vehicle-list request and test registration/login with demo-only credentials. The health endpoint is liveness-only; it does not establish database readiness. Do not use the local admin test-user script or make purchase/inventory writes as deployment smoke tests.
+
+Before a demo requiring administrator inventory controls, implement and separately review a one-time, explicitly invoked CLI provisioning workflow scoped to this verified Neon database. Public registration must remain USER-only. Do not add a public admin-registration route. Free services can sleep, and Neon can scale its compute to zero; expect delayed first requests and verify current provider quotas, backup/restore options, and usage limits before treating the demo as durable production data.
+
 ## API
 
 All responses use JSON. Errors have the shape `{ "error": { "code": "...", "message": "..." } }`. Authentication uses `Authorization: Bearer <JWT>`; tokens expire after one hour. Vehicle listing and reads are public. Vehicle mutations and restocking require an administrator. Purchases require any authenticated account.
@@ -95,4 +141,4 @@ Purchases decrement stock and record the unit price in one Prisma transaction. A
 
 ## Health
 
-`GET /api/health` returns `200` with `{ "status": "ok" }`.
+`GET /api/health` returns `200` with `{ "status": "ok" }`. This is a liveness check only: it does not connect to PostgreSQL or indicate database readiness.
