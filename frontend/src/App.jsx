@@ -6,6 +6,7 @@ import SectionPlaceholder from "./components/SectionPlaceholder.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegistrationPage from "./pages/RegistrationPage.jsx";
 import CustomerHomePage from "./pages/CustomerHomePage.jsx";
+import PurchaseHistoryPage from "./pages/PurchaseHistoryPage.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { getRoleAccess } from "./utils/roleAccess.js";
 import { useVehicleInventory } from "./hooks/useVehicleInventory.js";
@@ -32,6 +33,7 @@ export default function App() {
   const canBrowseInventory = isAdmin || roleAccess?.experience === "customer";
   const inventory = useVehicleInventory(token, canBrowseInventory);
   const [activeAdminSection, setActiveAdminSection] = useState("dashboard");
+  const [activeCustomerSection, setActiveCustomerSection] = useState("customer-home");
   const [authPage, setAuthPage] = useState(() => window.location.hash === "#register" ? "register" : "login");
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [registrationNotice, setRegistrationNotice] = useState("");
@@ -92,7 +94,7 @@ export default function App() {
       </main>
     );
   }
-  const activeSection = roleAccess.experience === "admin" ? activeAdminSection : roleAccess.homeSection;
+  const activeSection = roleAccess.experience === "admin" ? activeAdminSection : activeCustomerSection;
 
   return (
     <AppLayout
@@ -101,9 +103,11 @@ export default function App() {
       user={user}
       accountLabel={roleAccess.accountLabel}
       onLogout={logout}
-      onNavigate={setActiveAdminSection}
+      onNavigate={roleAccess.experience === "admin" ? setActiveAdminSection : setActiveCustomerSection}
     >
-      {roleAccess.experience === "customer" ? (
+      {roleAccess.experience === "customer" && activeSection === "customer-purchases" ? (
+        <PurchaseHistoryPage token={token} />
+      ) : roleAccess.experience === "customer" ? (
         <CustomerHomePage
           user={user}
           vehicles={inventory.vehicles}

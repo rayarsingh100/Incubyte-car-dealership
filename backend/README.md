@@ -59,6 +59,14 @@ Example registration body: `{ "name": "Sam Driver", "email": "sam@example.com", 
 | POST | `/api/vehicles/:id/restock` | Admin | `200` with `{ "vehicle": { ... } }` |
 | POST | `/api/vehicles/:id/purchases` | Authenticated | `201` with `{ "purchase": { ... }, "vehicle": { ... } }` |
 
+### Purchase history
+
+| Method | Path | Access | Success |
+| --- | --- | --- | --- |
+| GET | `/api/purchases` | Authenticated | `200` with `{ "purchases": [...], "pagination": { "page", "limit", "total", "pages" } }` |
+
+Purchase history accepts `page` (default 1) and `limit` (default 20, maximum 100). It always filters by the authenticated user's ID and orders records by `createdAt` descending, then `id` descending. Each item contains the purchase `id`, `vehicleId`, `quantity`, `unitPrice`, and `createdAt`, a computed `totalAmount`, and the vehicle's `id`, `make`, `model`, and `category`. It does not return user records or password data. Missing, invalid, and expired bearer tokens return `401`.
+
 Vehicle create requires exactly these fields: `make`, `model`, `category`, `price`, and `quantity`. Patch accepts one or more of the same fields; unknown fields are rejected. `make`, `model`, and `category` must be strings, are trimmed, and must contain 1–100 characters. `price` must be a JSON number greater than zero, no greater than `9999999999.99`, with at most two decimal places. Create/update `quantity` must be an integer from 0 through `2147483647`; purchase/restock `quantity` must be an integer from 1 through `2147483647`, and total stock cannot exceed `2147483647`. IDs must be UUIDs.
 
 For admin testing, use the guarded integration suite on a separate disposable database ending in `_test`. It registers unique test accounts and elevates only its newly registered test account inside that database. Do not change the role of an existing development account. The suite leaves test records in the disposable database, except that its CRUD test deletes only the vehicle it created.

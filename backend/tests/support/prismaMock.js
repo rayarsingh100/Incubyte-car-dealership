@@ -78,6 +78,30 @@ const prisma = {
       purchases.push(purchase);
       return clone(purchase);
     }),
+    findMany: jest.fn(async ({ where, skip = 0, take = 20, orderBy, select }) => {
+      let results = purchases.filter((purchase) => matches(purchase, where));
+      if (Array.isArray(orderBy)) {
+        results = results.slice().sort((left, right) => {
+          for (const ordering of orderBy) {
+            const [field, direction] = Object.entries(ordering)[0];
+            const comparison = field === "createdAt"
+              ? new Date(left[field]).getTime() - new Date(right[field]).getTime()
+              : String(left[field]).localeCompare(String(right[field]));
+            if (comparison !== 0) return direction === "desc" ? -comparison : comparison;
+          }
+          return 0;
+        });
+      }
+      return clone(results.slice(skip, skip + take).map((purchase) => {
+        const result = selectFields(purchase, select);
+        if (select?.vehicle) {
+          const vehicle = vehicles.find((item) => item.id === purchase.vehicleId);
+          result.vehicle = selectFields(vehicle, select.vehicle.select);
+        }
+        return result;
+      }));
+    }),
+    count: jest.fn(async ({ where }) => purchases.filter((purchase) => matches(purchase, where)).length),
   },
   $transaction: jest.fn(async (callback) => callback(prisma)),
   $disconnect: jest.fn(),

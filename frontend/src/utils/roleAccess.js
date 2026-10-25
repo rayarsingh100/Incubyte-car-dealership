@@ -7,6 +7,7 @@ const adminNavigation = [
 
 const customerNavigation = [
   { id: "customer-home", label: "Home", icon: "dashboard" },
+  { id: "customer-purchases", label: "Purchase History", icon: "purchases" },
 ];
 
 export function getRoleAccess(role) {

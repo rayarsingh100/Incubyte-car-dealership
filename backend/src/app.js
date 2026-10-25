@@ -1,6 +1,7 @@
 const express = require("express");
 const { HttpError } = require("./lib/errors");
 const authRoutes = require("./routes/authRoutes");
+const purchaseRoutes = require("./routes/purchaseRoutes");
 const vehicleRoutes = require("./routes/vehicleRoutes");
 
 const app = express();
@@ -15,6 +16,7 @@ app.get("/api/health", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/purchases", purchaseRoutes);
 app.use("/api/vehicles", vehicleRoutes);
 
 app.use((req, res, next) => next(new HttpError(404, "NOT_FOUND", "Route not found.")));
