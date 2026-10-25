@@ -17,8 +17,8 @@ export default function Sidebar({ activeSection, navigation, onNavigate, isMobil
         }`}
       >
         <div className="flex h-[76px] items-center gap-3 border-b border-[var(--color-border)] px-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-bronze)] text-white shadow-sm">
-            <Icon name="vehicles" className="h-5 w-5" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-ink)] p-0.5">
+            <img src="/favicon.svg" alt="" aria-hidden="true" className="h-full w-full object-contain" />
           </div>
           <div>
             <p className="font-display text-[17px] font-medium tracking-[0.04em] text-[#202520]">Motorline</p>

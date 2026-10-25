@@ -1,4 +1,3 @@
-import Icon from "./Icon.jsx";
 import Footer from "./Footer.jsx";
 
 export default function AuthPageLayout({ eyebrow, title, description, children, footer }) {
@@ -7,8 +6,8 @@ export default function AuthPageLayout({ eyebrow, title, description, children, 
       <div className="pointer-events-none absolute -top-48 left-1/2 h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-[#d0b477]/[0.055] blur-3xl" />
       <div className="relative flex w-full max-w-md flex-1 flex-col justify-center py-6">
         <div className="mb-7 flex items-center justify-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#d0b477]/30 bg-[var(--color-bronze)] text-[var(--color-champagne-soft)] shadow-lg shadow-black/30">
-            <Icon name="vehicles" className="h-5 w-5" />
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-ink)] p-0.5">
+            <img src="/favicon.svg" alt="" aria-hidden="true" className="h-full w-full object-contain" />
           </span>
           <div>
             <p className="font-display text-lg font-medium tracking-[0.04em] text-[var(--color-text)]">Motorline</p>
