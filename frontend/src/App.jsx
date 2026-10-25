@@ -8,7 +8,7 @@ import RegistrationPage from "./pages/RegistrationPage.jsx";
 import CustomerHomePage from "./pages/CustomerHomePage.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { getRoleAccess } from "./utils/roleAccess.js";
-import { sampleInventory } from "./utils/dashboardMockData.js";
+import { useVehicleInventory } from "./hooks/useVehicleInventory.js";
 
 const sectionDetails = {
   vehicles: {
@@ -27,6 +27,9 @@ const sectionDetails = {
 
 export default function App() {
   const { user, token, login, logout } = useAuth();
+  const roleAccess = getRoleAccess(user?.role);
+  const isAdmin = roleAccess?.experience === "admin";
+  const inventory = useVehicleInventory(token, isAdmin);
   const [activeAdminSection, setActiveAdminSection] = useState("dashboard");
   const [authPage, setAuthPage] = useState(() => window.location.hash === "#register" ? "register" : "login");
   const [registeredEmail, setRegisteredEmail] = useState("");
@@ -43,7 +46,6 @@ export default function App() {
     if (window.location.hash !== hash) window.history.pushState({ authPage: page }, "", hash);
     setAuthPage(page);
   };
-  const [vehicles, setVehicles] = useState(sampleInventory);
 
   if (!user || !token) {
     if (authPage === "register") {
@@ -78,7 +80,6 @@ export default function App() {
     );
   }
 
-  const roleAccess = getRoleAccess(user.role);
   if (!roleAccess) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
@@ -92,18 +93,6 @@ export default function App() {
   }
   const activeSection = roleAccess.experience === "admin" ? activeAdminSection : roleAccess.homeSection;
 
-  const saveVehicle = (vehicleFields, existingId) => {
-    if (existingId) {
-      setVehicles((currentVehicles) => currentVehicles.map((vehicle) => (
-        vehicle.id === existingId ? { ...vehicle, ...vehicleFields, id: vehicle.id } : vehicle
-      )));
-      return;
-    }
-
-    const id = globalThis.crypto?.randomUUID?.() || `sample-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    setVehicles((currentVehicles) => [{ id, ...vehicleFields }, ...currentVehicles]);
-  };
-
   return (
     <AppLayout
       activeSection={activeSection}
@@ -115,10 +104,34 @@ export default function App() {
     >
       {roleAccess.experience === "customer" ? (
         <CustomerHomePage user={user} />
+      ) : inventory.vehicles === null ? (
+        <section className="mx-auto flex min-h-[45vh] max-w-xl flex-col items-center justify-center px-5 text-center">
+          {inventory.isLoading ? (
+            <>
+              <span className="h-9 w-9 animate-spin rounded-full border-2 border-slate-200 border-t-teal-700" aria-hidden="true" />
+              <p role="status" className="mt-4 text-sm font-medium text-slate-700">Loading vehicle inventory…</p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-lg font-semibold text-slate-900">Inventory could not be loaded</h1>
+              <p role="alert" className="mt-2 text-sm text-slate-600">{inventory.error?.status === 401 ? "Your session could not be verified. Sign out and sign in again." : inventory.error?.status === 403 ? "Your account does not have permission to view this inventory." : inventory.error?.message || "Please check the API connection and try again."}</p>
+              <button type="button" onClick={() => inventory.refresh().catch(() => {})} className="mt-5 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white focus:outline-none focus:ring-4 focus:ring-teal-600/20">Try again</button>
+            </>
+          )}
+        </section>
       ) : activeSection === "dashboard" ? (
-        <DashboardPage vehicles={vehicles} />
+        <DashboardPage vehicles={inventory.vehicles} inventoryError={inventory.error} isRefreshing={inventory.isRefreshing} onRefresh={() => inventory.refresh().catch(() => {})} />
       ) : activeSection === "vehicles" ? (
-        <VehiclesPage vehicles={vehicles} onSaveVehicle={saveVehicle} />
+        <VehiclesPage
+          vehicles={inventory.vehicles}
+          inventoryError={inventory.error}
+          isRefreshing={inventory.isRefreshing}
+          onRefresh={() => inventory.refresh().catch(() => {})}
+          onCreateVehicle={inventory.createVehicle}
+          onUpdateVehicle={inventory.updateVehicle}
+          onDeleteVehicle={inventory.deleteVehicle}
+          onRestockVehicle={inventory.restockVehicle}
+        />
       ) : (
         <SectionPlaceholder {...sectionDetails[activeSection]} />
       )}

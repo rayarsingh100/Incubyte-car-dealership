@@ -67,13 +67,13 @@ export default function Sidebar({ activeSection, navigation, onNavigate, isMobil
           <div className="rounded-2xl bg-white/[0.055] p-4">
             <div className="flex items-center gap-2 text-xs font-medium text-white">
               <span className="h-2 w-2 rounded-full bg-amber-300" />
-              Preview workspace
+              Connected workspace
             </div>
             <p className="mt-2 text-[11px] leading-5 text-slate-400">
-              Dashboard figures are illustrative sample data.
+              Inventory figures are loaded from the dealership API.
             </p>
           </div>
-          <p className="px-1 pt-4 text-[10px] text-slate-500">Inventory workspace · UI preview</p>
+          <p className="px-1 pt-4 text-[10px] text-slate-500">Inventory workspace</p>
         </div>
       </aside>
     </>

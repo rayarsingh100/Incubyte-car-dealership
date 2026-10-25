@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Icon from "./Icon.jsx";
 import { normalizeVehicleFields, validateVehicleFields } from "../utils/vehicleFormValidation.js";
+import { getApiErrorMessage } from "../utils/apiErrorMessages.js";
 
 const blankFields = { make: "", model: "", category: "", price: "", quantity: "" };
 
@@ -34,7 +35,9 @@ export default function VehicleFormModal({ vehicle, onSave, onClose, onSaved }) 
   const onCloseRef = useRef(onClose);
   const dialogRef = useRef(null);
 
-  onCloseRef.current = onClose;
+  onCloseRef.current = () => {
+    if (!submittingRef.current) onClose();
+  };
 
   useEffect(() => {
     const previousFocus = document.activeElement;
@@ -88,7 +91,7 @@ export default function VehicleFormModal({ vehicle, onSave, onClose, onSaved }) 
     setSubmitError("");
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (submittingRef.current) return;
 
@@ -104,13 +107,13 @@ export default function VehicleFormModal({ vehicle, onSave, onClose, onSaved }) 
     submittingRef.current = true;
     setIsSubmitting(true);
     try {
-      onSave(normalizeVehicleFields(values), vehicle?.id);
-      onSaved(isEditing ? "Vehicle updated in local sample data for this session." : "Vehicle added to local sample data for this session.");
+      await onSave(normalizeVehicleFields(values), vehicle?.id);
+      onSaved(isEditing ? "Vehicle updated in the dealership inventory." : "Vehicle added to the dealership inventory.");
       onClose();
-    } catch {
+    } catch (error) {
       submittingRef.current = false;
       setIsSubmitting(false);
-      setSubmitError("The vehicle could not be saved to this session. Please try again.");
+      setSubmitError(getApiErrorMessage(error));
     }
   };
 
@@ -118,7 +121,7 @@ export default function VehicleFormModal({ vehicle, onSave, onClose, onSaved }) 
     <div
       className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-[2px] sm:items-center sm:p-5"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget && !isSubmitting) onClose();
       }}
     >
       <section
@@ -131,19 +134,20 @@ export default function VehicleFormModal({ vehicle, onSave, onClose, onSaved }) 
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-100 bg-white/95 px-5 py-5 backdrop-blur sm:px-7">
           <div>
             <span className="inline-flex rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-[9px] font-semibold tracking-[0.12em] text-teal-800 uppercase">
-              Local sample data
+              Connected inventory
             </span>
             <h2 id="vehicle-form-title" className="mt-3 text-xl font-semibold tracking-tight text-slate-900">
               {isEditing ? "Edit vehicle" : "Add vehicle"}
             </h2>
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              Changes update this preview session only; nothing is sent to or saved by the backend.
+              Changes are sent to the dealership inventory API.
             </p>
           </div>
           <button
             type="button"
             aria-label="Close vehicle form"
             onClick={onClose}
+            disabled={isSubmitting}
             className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus:ring-4 focus:ring-teal-500/15"
           >
             <Icon name="close" />

@@ -7,7 +7,7 @@ const metrics = (summary) => [
   {
     label: "Total vehicles",
     value: formatNumber(summary.totalModels),
-    detail: `${formatNumber(summary.totalUnits)} units across the sample catalog`,
+    detail: `${formatNumber(summary.totalUnits)} units across the inventory`,
     icon: "vehicles",
     tone: "teal",
   },
@@ -28,7 +28,7 @@ const metrics = (summary) => [
   {
     label: "Total inventory value",
     value: formatCurrency(summary.inventoryValue),
-    detail: "Estimated from sample quantity × unit price",
+    detail: "Estimated from quantity × unit price",
     icon: "chart",
     tone: "violet",
   },
@@ -55,7 +55,7 @@ function InventorySummary({ inventory }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">Inventory overview</h2>
-          <p className="mt-1 text-xs text-slate-500">Sample stock by vehicle type</p>
+          <p className="mt-1 text-xs text-slate-500">Current stock by vehicle type</p>
         </div>
         <span className="rounded-lg bg-slate-50 px-2.5 py-1.5 text-[10px] font-medium text-slate-500 ring-1 ring-inset ring-slate-200">
           {formatNumber(totalUnits)} units
@@ -64,7 +64,7 @@ function InventorySummary({ inventory }) {
 
       {categoryRows.length === 0 || totalUnits === 0 ? (
         <div className="mt-7 rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
-          {categoryRows.length === 0 ? "No sample inventory is available." : "Vehicles are listed, but there are no units in stock."}
+          {categoryRows.length === 0 ? "No vehicles are in the inventory yet." : "Vehicles are listed, but there are no units in stock."}
         </div>
       ) : (
         <>
@@ -141,7 +141,7 @@ function LowStockList({ inventory }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">Needs attention</h2>
-          <p className="mt-1 text-xs text-slate-500">Low-stock sample vehicles</p>
+          <p className="mt-1 text-xs text-slate-500">Vehicles with 4 or fewer units in stock</p>
         </div>
         <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
           {lowStockVehicles.length} low
@@ -151,7 +151,7 @@ function LowStockList({ inventory }) {
       {lowStockVehicles.length === 0 ? (
         <div className="mt-5 rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
           <p className="text-sm font-medium text-slate-700">All clear</p>
-          <p className="mt-1 text-xs text-slate-500">There are no low-stock sample vehicles.</p>
+          <p className="mt-1 text-xs text-slate-500">There are no low-stock vehicles.</p>
         </div>
       ) : (
         <div className="mt-4 divide-y divide-slate-100">
@@ -177,7 +177,7 @@ function LowStockList({ inventory }) {
   );
 }
 
-export default function DashboardPage({ vehicles }) {
+export default function DashboardPage({ vehicles, inventoryError, isRefreshing, onRefresh }) {
   const summary = summarizeInventory(vehicles);
 
   return (
@@ -186,16 +186,23 @@ export default function DashboardPage({ vehicles }) {
         <div>
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-teal-800 uppercase">
             <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
-            Sample data · not live
+            Live inventory
           </div>
           <h1 className="text-[27px] font-semibold tracking-[-0.035em] text-slate-950 sm:text-[32px]">Dashboard</h1>
           <p className="mt-1.5 text-[13px] text-slate-500">A snapshot of the dealership inventory workspace.</p>
         </div>
         <div className="flex items-center gap-2 text-[11px] text-slate-500">
           <Icon name="clock" className="h-4 w-4" />
-          Preview figures only
+          From the connected API
         </div>
       </div>
+
+      {inventoryError && (
+        <div role="alert" className="mt-5 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+          <p>{inventoryError.status === 401 ? "Your session could not be verified. Sign out and sign in again." : inventoryError.status === 403 ? "Your account does not have permission to access inventory." : "Inventory was updated, but the latest refresh failed. Displayed figures may be stale."}</p>
+          <button type="button" onClick={onRefresh} disabled={isRefreshing} className="shrink-0 rounded-lg px-3 py-2 font-semibold text-amber-900 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-600/20 disabled:cursor-wait disabled:opacity-60">{isRefreshing ? "Refreshing…" : "Retry refresh"}</button>
+        </div>
+      )}
 
       <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics(summary).map((metric) => <MetricCard key={metric.label} {...metric} />)}
@@ -211,7 +218,7 @@ export default function DashboardPage({ vehicles }) {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">Stock levels</h2>
-              <p className="mt-1 text-xs text-slate-500">Sample quantity by vehicle model</p>
+              <p className="mt-1 text-xs text-slate-500">Current quantity by vehicle model</p>
             </div>
             <span className="flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-[10px] font-medium text-slate-500 ring-1 ring-inset ring-slate-200">
               <Icon name="box" className="h-3.5 w-3.5" />
@@ -242,7 +249,7 @@ export default function DashboardPage({ vehicles }) {
       </div>
 
       <footer className="mt-8 flex flex-col justify-between gap-2 border-t border-slate-200/80 pt-5 text-[10px] text-slate-400 sm:flex-row sm:items-center">
-        <p>Dashboard preview · numbers are illustrative and are not connected to the backend.</p>
+        <p>Inventory metrics come from the connected backend. Recent activity remains illustrative sample content.</p>
         <p>Motorline inventory workspace</p>
       </footer>
     </div>

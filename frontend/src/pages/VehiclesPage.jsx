@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import Icon from "../components/Icon.jsx";
 import VehicleFormModal from "../components/VehicleFormModal.jsx";
+import RestockVehicleModal from "../components/RestockVehicleModal.jsx";
 import VehicleStatusBadge from "../components/VehicleStatusBadge.jsx";
 import { formatCurrency, formatNumber } from "../utils/formatters.js";
 import { filterInventory, getAvailability } from "../utils/vehicleInventory.js";
+import { getApiErrorMessage } from "../utils/apiErrorMessages.js";
 
 const availabilityOptions = [
   { value: "all", label: "All availability" },
@@ -12,21 +14,21 @@ const availabilityOptions = [
   { value: "out-of-stock", label: "Out of stock" },
 ];
 
-function VehicleTable({ vehicles, totalInventoryCount, hasFilters, onClearFilters, onEdit }) {
+function VehicleTable({ vehicles, totalInventoryCount, hasFilters, onClearFilters, onEdit, onRestock, onDelete, pendingVehicleId }) {
   if (vehicles.length === 0) {
-    const noSampleVehicles = totalInventoryCount === 0;
+    const noVehicles = totalInventoryCount === 0;
 
     return (
       <div className="flex min-h-[310px] flex-col items-center justify-center px-5 py-12 text-center">
         <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
-          <Icon name={noSampleVehicles ? "vehicles" : "search"} className="h-5 w-5" />
+          <Icon name={noVehicles ? "vehicles" : "search"} className="h-5 w-5" />
         </span>
         <h3 className="mt-4 text-sm font-semibold text-slate-800">
-          {noSampleVehicles ? "No sample vehicles yet" : "No vehicles match these filters"}
+          {noVehicles ? "No vehicles in the inventory yet" : "No vehicles match these filters"}
         </h3>
         <p className="mt-1.5 max-w-sm text-xs leading-5 text-slate-500">
-          {noSampleVehicles
-            ? "Sample inventory records will appear here when they are added to the preview data."
+          {noVehicles
+            ? "Add a vehicle to start building the dealership inventory."
             : "Try another name, brand, category, or availability filter."}
         </p>
         {hasFilters && (
@@ -44,7 +46,7 @@ function VehicleTable({ vehicles, totalInventoryCount, hasFilters, onClearFilter
 
   return (
     <div className="overflow-x-auto" tabIndex="0" aria-label="Vehicle inventory table; scroll horizontally to see all columns">
-      <table className="w-full min-w-[900px] border-collapse text-left">
+      <table className="w-full min-w-[1040px] border-collapse text-left">
         <thead>
           <tr className="border-y border-slate-100 bg-slate-50/70">
             <th scope="col" className="px-5 py-3.5 text-[10px] font-semibold tracking-[0.12em] text-slate-500 uppercase">Vehicle / model</th>
@@ -88,11 +90,26 @@ function VehicleTable({ vehicles, totalInventoryCount, hasFilters, onClearFilter
                   <button
                     type="button"
                     onClick={() => onEdit(vehicle)}
+                    disabled={Boolean(pendingVehicleId)}
                     aria-label={`Edit ${vehicle.make} ${vehicle.model}`}
                     className="rounded-lg px-3 py-2 text-[11px] font-semibold text-teal-700 transition hover:bg-teal-50 focus:outline-none focus:ring-4 focus:ring-teal-500/15"
                   >
                     Edit
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => onRestock(vehicle)}
+                    disabled={Boolean(pendingVehicleId)}
+                    aria-label={`Restock ${vehicle.make} ${vehicle.model}`}
+                    className="rounded-lg px-3 py-2 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-blue-500/15 disabled:cursor-wait disabled:opacity-50"
+                  >Restock</button>
+                  <button
+                    type="button"
+                    onClick={() => onDelete(vehicle)}
+                    disabled={Boolean(pendingVehicleId)}
+                    aria-label={`Delete ${vehicle.make} ${vehicle.model}`}
+                    className="rounded-lg px-3 py-2 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-50 focus:outline-none focus:ring-4 focus:ring-rose-500/15 disabled:cursor-wait disabled:opacity-50"
+                  >Delete</button>
                 </td>
               </tr>
             );
@@ -103,13 +120,16 @@ function VehicleTable({ vehicles, totalInventoryCount, hasFilters, onClearFilter
   );
 }
 
-export default function VehiclesPage({ vehicles, onSaveVehicle }) {
+export default function VehiclesPage({ vehicles, inventoryError, isRefreshing, onRefresh, onCreateVehicle, onUpdateVehicle, onDeleteVehicle, onRestockVehicle }) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [availability, setAvailability] = useState("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [vehicleToEdit, setVehicleToEdit] = useState(null);
   const [feedback, setFeedback] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [vehicleToRestock, setVehicleToRestock] = useState(null);
+  const [pendingVehicleId, setPendingVehicleId] = useState(null);
 
   const categories = useMemo(
     () => [...new Set(vehicles.map((vehicle) => vehicle.category))].sort(),
@@ -143,25 +163,54 @@ export default function VehiclesPage({ vehicles, onSaveVehicle }) {
     setVehicleToEdit(null);
   };
 
+  const saveVehicle = async (fields, existingId) => {
+    setActionError("");
+    if (existingId) await onUpdateVehicle(existingId, fields);
+    else await onCreateVehicle(fields);
+  };
+
+  const handleDelete = async (vehicle) => {
+    if (pendingVehicleId || !globalThis.confirm(`Delete ${vehicle.make} ${vehicle.model} from inventory? Vehicles with purchase history cannot be deleted.`)) return;
+    setPendingVehicleId(vehicle.id);
+    setActionError("");
+    setFeedback("");
+    try {
+      await onDeleteVehicle(vehicle.id);
+      setFeedback(`${vehicle.make} ${vehicle.model} was deleted from inventory.`);
+    } catch (error) {
+      setActionError(getApiErrorMessage(error));
+    } finally {
+      setPendingVehicleId(null);
+    }
+  };
+
+  const handleRestock = async (vehicleId, quantity) => {
+    setPendingVehicleId(vehicleId);
+    setActionError("");
+    setFeedback("");
+    try {
+      await onRestockVehicle(vehicleId, quantity);
+      setFeedback("Vehicle stock was updated.");
+    } finally {
+      setPendingVehicleId(null);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-[1240px]">
       <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
         <div>
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-teal-800 uppercase">
             <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
-            Sample data · not live
+            Connected inventory
           </div>
           <h1 className="text-[27px] font-semibold tracking-[-0.035em] text-slate-950 sm:text-[32px]">Vehicles</h1>
-          <p className="mt-1.5 text-[13px] text-slate-500">Browse the sample dealership inventory and stock status.</p>
+          <p className="mt-1.5 text-[13px] text-slate-500">Browse and manage vehicle inventory from the dealership API.</p>
         </div>
         <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3 lg:justify-end">
-          <p id="add-vehicle-note" className="max-w-[230px] text-[10px] leading-4 text-slate-500 sm:text-right">
-            Adds a local sample record for this session only; nothing is sent to the backend.
-          </p>
           <button
             type="button"
             onClick={openAddForm}
-            aria-describedby="add-vehicle-note"
             className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-800 focus:outline-none focus:ring-4 focus:ring-teal-600/20"
           >
             <Icon name="plus" className="h-4 w-4" />
@@ -170,14 +219,23 @@ export default function VehiclesPage({ vehicles, onSaveVehicle }) {
         </div>
       </div>
 
-      {feedback && (
-        <div role="status" className="mt-5 flex items-start justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-900">
-          <p>{feedback}</p>
+      {inventoryError && (
+        <div role="alert" className="mt-5 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+          <p>{inventoryError.status === 401 ? "Your session could not be verified. Sign out and sign in again." : inventoryError.status === 403 ? "Your account does not have permission to manage inventory." : "The latest inventory refresh failed. The rows shown may be out of date."}</p>
+          <button type="button" onClick={onRefresh} disabled={isRefreshing} className="shrink-0 rounded-lg px-3 py-2 font-semibold text-amber-900 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-60">{isRefreshing ? "Refreshing…" : "Retry refresh"}</button>
+        </div>
+      )}
+
+      {(feedback || actionError) && (
+        <div role={actionError ? "alert" : "status"} className={`mt-5 flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-xs ${actionError ? "border-rose-200 bg-rose-50 text-rose-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"}`}>
+          <p>{actionError || feedback}</p>
           <button
             type="button"
             aria-label="Dismiss message"
-            onClick={() => setFeedback("")}
-            className="-mt-1 -mr-1 rounded-lg p-1.5 text-emerald-800 transition hover:bg-emerald-100 focus:outline-none focus:ring-4 focus:ring-emerald-600/15"
+            onClick={() => { setFeedback(""); setActionError(""); }}
+            className={actionError
+              ? "-mt-1 -mr-1 rounded-lg p-1.5 text-rose-800 transition hover:bg-rose-100 focus:outline-none focus:ring-4 focus:ring-rose-600/15"
+              : "-mt-1 -mr-1 rounded-lg p-1.5 text-emerald-800 transition hover:bg-emerald-100 focus:outline-none focus:ring-4 focus:ring-emerald-600/15"}
           >
             <Icon name="close" className="h-4 w-4" />
           </button>
@@ -240,14 +298,15 @@ export default function VehiclesPage({ vehicles, onSaveVehicle }) {
           <div>
             <h2 className="text-sm font-semibold text-slate-900">Inventory list</h2>
             <p className="mt-1 text-[11px] text-slate-500">
-              Showing {formatNumber(filteredVehicles.length)} of {formatNumber(vehicles.length)} sample models · {formatNumber(totalUnits)} units
+              Showing {formatNumber(filteredVehicles.length)} of {formatNumber(vehicles.length)} vehicles · {formatNumber(totalUnits)} units
             </p>
           </div>
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1.5 text-[10px] font-medium text-slate-500 ring-1 ring-inset ring-slate-200">
             <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
-            Local preview
+            API inventory
           </span>
         </div>
+        {pendingVehicleId && <p role="status" className="border-t border-slate-100 px-5 py-2 text-xs text-slate-500">Updating vehicle inventory…</p>}
         <p className="border-t border-slate-100 bg-slate-50/60 px-5 py-2 text-[10px] text-slate-500 sm:hidden">
           Swipe horizontally to view every column.
         </p>
@@ -257,20 +316,26 @@ export default function VehiclesPage({ vehicles, onSaveVehicle }) {
           hasFilters={hasFilters}
           onClearFilters={clearFilters}
           onEdit={openEditForm}
+          onRestock={setVehicleToRestock}
+          onDelete={handleDelete}
+          pendingVehicleId={pendingVehicleId}
         />
         <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-[10px] text-slate-400 sm:px-6">
-          <span>Availability is based on sample stock quantity.</span>
-          <span>Updated for this preview</span>
+          <span>Availability is based on current stock quantity.</span>
+          <span>Changes are saved through the inventory API</span>
         </div>
       </section>
 
       {isFormOpen && (
         <VehicleFormModal
           vehicle={vehicleToEdit}
-          onSave={onSaveVehicle}
+          onSave={saveVehicle}
           onClose={closeForm}
           onSaved={(message) => setFeedback(message)}
         />
+      )}
+      {vehicleToRestock && (
+        <RestockVehicleModal vehicle={vehicleToRestock} onSave={handleRestock} onClose={() => setVehicleToRestock(null)} />
       )}
     </div>
   );
