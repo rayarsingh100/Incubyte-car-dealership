@@ -1,5 +1,14 @@
 # Backend Verification Report
 
+## Render proxy trust and rate-limit regression (2026-10-25)
+
+- Render's documented Express setup uses one trusted proxy hop. The repository configures Express from `TRUST_PROXY_HOPS`; Render had no checked-in service manifest, and its documented service settings did not specify a value. Updated deployment documentation to set `TRUST_PROXY_HOPS=1` for the standard Render topology. The Render dashboard value still needs to be set manually; no deployment setting was changed.
+- Added a rate-limit regression that sends forwarded IPs: distinct rightmost forwarded client addresses get separate login buckets, and changing only a farther-left address does not create a fresh bucket. The test sets `TRUST_PROXY_HOPS=1` and confirms the Express setting.
+- One initial focused run without proxy trust failed the new test as expected. With the Render one-hop configuration, the focused proxy and rate-limit tests passed (2 suites, 10 tests).
+- `npm test`: passed, 13 suites and 70 tests. `npm run verify:safe`: passed, 13 suites and 70 tests, Prisma validation/generation, syntax checks, frontend production build, and diff checks. `git diff --check`: passed.
+- PostgreSQL integration tests were not run; no database was accessed. No auth, CORS, business logic, or database behavior was changed.
+- This proxy validation error is emitted by the login rate-limit middleware. That middleware is mounted only on `POST /api/auth/login`, so it does not explain an Admin Customer Orders `GET /api/purchases` 500; that endpoint can still fail independently, for example due to deployed schema drift.
+
 ## Demo checkout and administrator orders (2026-10-25)
 
 - Red: focused tests reproduced demo failure still returning `201`, the missing authoritative `totalAmount`, and administrators receiving zero orders from the customer-scoped endpoint.

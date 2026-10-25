@@ -198,6 +198,62 @@ describe("dedicated PostgreSQL API integration", () => {
     expect(await prisma.purchase.count({ where: { vehicleId: vehicle.id } })).toBe(1);
   });
 
+  test("persists successful demo purchases and exposes them to admins without leaking them to other customers", async () => {
+    const vehicle = await createVehicle(3);
+    const purchaseResponse = await request(app)
+      .post(`/api/vehicles/${vehicle.id}/purchases`)
+      .set("Authorization", `Bearer ${regularToken}`)
+      .send({ quantity: 2, demoPaymentOutcome: "success" });
+
+    expect(purchaseResponse.status).toBe(201);
+    const purchaseId = purchaseResponse.body.purchase.id;
+    const persisted = await prisma.purchase.findUnique({
+      where: { id: purchaseId },
+      include: { user: true, vehicle: true },
+    });
+    expect(persisted).toMatchObject({
+      id: purchaseId,
+      userId: regularUserId,
+      vehicleId: vehicle.id,
+      quantity: 2,
+      paymentStatus: "SUCCEEDED",
+      paymentMethod: "DEMO_CARD",
+      user: { id: regularUserId },
+      vehicle: { id: vehicle.id, quantity: 1 },
+    });
+
+    const adminHistory = await request(app)
+      .get("/api/purchases?page=1&limit=100")
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(adminHistory.status).toBe(200);
+    expect(adminHistory.body.purchases).toContainEqual(expect.objectContaining({
+      id: purchaseId,
+      vehicleId: vehicle.id,
+      quantity: 2,
+      paymentStatus: "SUCCEEDED",
+      user: { id: regularUserId, name: regularUser.name, email: regularUser.email },
+      vehicle: expect.objectContaining({ id: vehicle.id }),
+    }));
+
+    const otherHistory = await request(app)
+      .get("/api/purchases?page=1&limit=100")
+      .set("Authorization", `Bearer ${otherToken}`);
+    expect(otherHistory.status).toBe(200);
+    expect(otherHistory.body.purchases.some(({ id }) => id === purchaseId)).toBe(false);
+  });
+
+  test.each(["failure", "cancelled"])("does not persist a %s demo payment or decrement stock", async (outcome) => {
+    const vehicle = await createVehicle(2);
+    const response = await request(app)
+      .post(`/api/vehicles/${vehicle.id}/purchases`)
+      .set("Authorization", `Bearer ${regularToken}`)
+      .send({ quantity: 1, demoPaymentOutcome: outcome });
+
+    expect(response.status).toBe(outcome === "failure" ? 402 : 409);
+    expect(await prisma.purchase.count({ where: { vehicleId: vehicle.id } })).toBe(0);
+    expect((await prisma.vehicle.findUnique({ where: { id: vehicle.id } })).quantity).toBe(2);
+  });
+
   test("rolls back a database stock update when the transaction fails", async () => {
     const vehicle = await createVehicle(3);
     await expect(prisma.$transaction(async (transaction) => {

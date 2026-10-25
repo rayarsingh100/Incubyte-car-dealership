@@ -188,7 +188,7 @@ Never commit `.env` files or put backend secrets in frontend build settings.
 | `JWT_SECRET` | Backend | JWT signing secret; at least 32 random bytes. |
 | `PORT` | Backend | HTTP listener port; supplied by Render, defaults to `3000` locally. |
 | `FRONTEND_ORIGIN` | Backend | Exact HTTPS frontend origin for cross-origin browser requests; no path or trailing slash. |
-| `TRUST_PROXY_HOPS` | Backend | Optional integer from 1–5. Set only after verifying the host’s proxy chain. |
+| `TRUST_PROXY_HOPS` | Backend | Set to `1` on the documented Render Web Service; this trusts the single Render proxy hop seen by Express. Leave unset for direct local development. Reassess if another proxy is added. |
 | `LOGIN_RATE_LIMIT_WINDOW_MS` | Backend | Login limit window in milliseconds; defaults to 15 minutes. |
 | `LOGIN_RATE_LIMIT_MAX` | Backend | Login attempts per window and client IP; defaults to 5. |
 | `VITE_API_BASE_URL` | Frontend build | API base URL compiled into the browser bundle; `/api` for local Vite proxy, hosted HTTPS backend URL plus `/api` for Render. |
@@ -258,7 +258,7 @@ Commands below should be run from the named package directory. The latest safe v
 
 | Category | Command or check | Result and scope |
 | --- | --- | --- |
-| Backend unit/regression | `cd backend && npm run verify:safe` | Passed in this improvement run: 13 Jest suites, 69 tests. Tests use a Prisma mock; this command excludes PostgreSQL integration. |
+| Backend unit/regression | `cd backend && npm run verify:safe` | Passed in this proxy-trust run: 13 Jest suites, 70 tests. Tests use a Prisma mock; this command excludes PostgreSQL integration. |
 | Prisma | Included in `verify:safe`: `npm run db:validate` and `npm run db:generate` | Passed: schema validation and Prisma Client generation. No database connection is made. |
 | Syntax and frontend build | Included in `verify:safe` | Passed: listed backend `node --check` files and Vite production build. |
 | Frontend tests | `cd frontend && npm test` | Passed in this audit: 3 Node test cases covering restore, invalid stored data, and logout clearing. |
@@ -278,7 +278,7 @@ The repository’s documented Render settings are:
 
 | Service | Root | Build | Start / publish | Important configuration |
 | --- | --- | --- | --- | --- |
-| Backend Web Service | `backend` | `npm ci && npm run db:generate` | `npm start`; health check `/api/health` | `NODE_VERSION=22.22.0`, `DATABASE_URL`, private `JWT_SECRET`, `FRONTEND_ORIGIN=https://incubyte-car-dealership-2x0e.onrender.com`, and a verified `TRUST_PROXY_HOPS`; Render supplies `PORT`. |
+| Backend Web Service | `backend` | `npm ci && npm run db:generate` | `npm start`; health check `/api/health` | `NODE_VERSION=22.22.0`, `DATABASE_URL`, private `JWT_SECRET`, `FRONTEND_ORIGIN=https://incubyte-car-dealership-2x0e.onrender.com`, and `TRUST_PROXY_HOPS=1`; Render supplies `PORT`. |
 | Frontend Static Site | `frontend` | `npm ci && npm run build` | Publish `dist` | `NODE_VERSION=22.22.0`; build-time `VITE_API_BASE_URL=https://incubyte-car-dealership-api.onrender.com/api`. This value is public and compiled into the browser bundle. |
 
 Apply Prisma migrations only as a deliberate release step after verifying the Neon project, branch, and database target. The owner reports that the image URL migration is applied and Prisma reported the schema up to date; this README preparation did not connect to Neon or run migration commands. Never use an application database for destructive integration tests. Follow the target-confirmation and migration instructions in [backend/README.md](backend/README.md).

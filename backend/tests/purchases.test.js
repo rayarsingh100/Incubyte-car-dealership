@@ -98,7 +98,8 @@ describe("GET /api/purchases", () => {
     expect(response.status).toBe(200);
     expect(response.body.purchases).toHaveLength(2);
     expect(response.body.purchases.map(({ user }) => user.email).sort()).toEqual([userData.email, otherUserData.email].sort());
-    expect(response.body.purchases[0]).toMatchObject({
+    const otherCustomerOrder = response.body.purchases.find(({ user }) => user.email === otherUserData.email);
+    expect(otherCustomerOrder).toMatchObject({
       vehicle: { make: "Toyota", model: "Corolla" },
       unitPrice: "24999.95",
       totalAmount: "49999.90",
@@ -106,7 +107,7 @@ describe("GET /api/purchases", () => {
       paymentMethod: "DEMO_CARD",
       user: { name: otherUserData.name, email: otherUserData.email },
     });
-    expect(response.body.purchases[0]).not.toHaveProperty("user.passwordHash");
+    expect(otherCustomerOrder).not.toHaveProperty("user.passwordHash");
     expect(prisma.purchase.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: {} }));
   });
 
