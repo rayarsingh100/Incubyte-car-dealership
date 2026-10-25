@@ -3,6 +3,7 @@ import {
   createVehicle as createVehicleRequest,
   deleteVehicle as deleteVehicleRequest,
   listVehicles,
+  purchaseVehicle as purchaseVehicleRequest,
   restockVehicle as restockVehicleRequest,
   updateVehicle as updateVehicleRequest,
 } from "../services/vehiclesApi.js";
@@ -52,6 +53,31 @@ export function useVehicleInventory(token, enabled) {
     return result;
   };
 
+  const purchaseVehicle = async (id, quantity) => {
+    try {
+      const result = await purchaseVehicleRequest(token, id, quantity);
+      let inventoryRefreshed = true;
+      try {
+        await refresh();
+      } catch {
+        inventoryRefreshed = false;
+      }
+      return { ...result, inventoryRefreshed };
+    } catch (requestError) {
+      if (requestError?.status === 409) {
+        let inventoryRefreshed = false;
+        try {
+          await refresh();
+          inventoryRefreshed = true;
+        } catch {
+          // Keep the purchase conflict visible even if refreshing the inventory also fails.
+        }
+        requestError.inventoryRefreshed = inventoryRefreshed;
+      }
+      throw requestError;
+    }
+  };
+
   return {
     vehicles,
     isLoading: vehicles === null && isFetching,
@@ -62,5 +88,6 @@ export function useVehicleInventory(token, enabled) {
     updateVehicle: (id, vehicle) => refreshAfterMutation(() => updateVehicleRequest(token, id, vehicle)),
     deleteVehicle: (id) => refreshAfterMutation(() => deleteVehicleRequest(token, id)),
     restockVehicle: (id, quantity) => refreshAfterMutation(() => restockVehicleRequest(token, id, quantity)),
+    purchaseVehicle,
   };
 }

@@ -29,7 +29,8 @@ export default function App() {
   const { user, token, login, logout } = useAuth();
   const roleAccess = getRoleAccess(user?.role);
   const isAdmin = roleAccess?.experience === "admin";
-  const inventory = useVehicleInventory(token, isAdmin);
+  const canBrowseInventory = isAdmin || roleAccess?.experience === "customer";
+  const inventory = useVehicleInventory(token, canBrowseInventory);
   const [activeAdminSection, setActiveAdminSection] = useState("dashboard");
   const [authPage, setAuthPage] = useState(() => window.location.hash === "#register" ? "register" : "login");
   const [registeredEmail, setRegisteredEmail] = useState("");
@@ -103,7 +104,15 @@ export default function App() {
       onNavigate={setActiveAdminSection}
     >
       {roleAccess.experience === "customer" ? (
-        <CustomerHomePage user={user} />
+        <CustomerHomePage
+          user={user}
+          vehicles={inventory.vehicles}
+          isLoading={inventory.isLoading}
+          inventoryError={inventory.error}
+          isRefreshing={inventory.isRefreshing}
+          onRefresh={() => inventory.refresh().catch(() => {})}
+          onPurchase={inventory.purchaseVehicle}
+        />
       ) : inventory.vehicles === null ? (
         <section className="mx-auto flex min-h-[45vh] max-w-xl flex-col items-center justify-center px-5 text-center">
           {inventory.isLoading ? (

@@ -63,3 +63,15 @@ export async function restockVehicle(token, id, quantity) {
   });
   return normalizeVehicle(payload.vehicle);
 }
+
+export async function purchaseVehicle(token, id, quantity) {
+  const payload = await requestJson(`/vehicles/${encodeURIComponent(id)}/purchases`, {
+    method: "POST",
+    token,
+    body: { quantity },
+  });
+  if (!payload.purchase || typeof payload.purchase.id !== "string" || payload.purchase.quantity !== quantity) {
+    throw new ApiError("The API returned an unexpected purchase response.");
+  }
+  return { purchase: payload.purchase, vehicle: normalizeVehicle(payload.vehicle) };
+}
