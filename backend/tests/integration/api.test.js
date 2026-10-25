@@ -7,6 +7,7 @@ assertDedicatedTestDatabase({
 
 const crypto = require("node:crypto");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const request = require("supertest");
 const app = require("../../src/app");
 const prisma = require("../../src/lib/prisma");
@@ -25,32 +26,48 @@ const adminUser = {
   password: "IntegrationPass123!",
   role: "ADMIN",
 };
+const otherUser = {
+  name: "Other Integration User",
+  email: `integration-other-${suffix}@example.test`,
+  password: "IntegrationPass123!",
+};
 let regularToken;
 let adminToken;
+let otherToken;
+let regularUserId;
+let otherUserId;
 let protectedVehicleId;
+const createdUserIds = new Set();
+const createdVehicleIds = new Set();
 
-const vehiclePayload = (quantity = 5) => ({
+const vehiclePayload = (quantity = 5, model = `Model-${suffix.slice(0, 8)}`) => ({
   make: "Integration Motors",
-  model: `Model-${suffix.slice(0, 8)}`,
+  model,
   category: "Test Vehicle",
   price: 12345.67,
   quantity,
 });
 
-const register = async (account) => request(app).post("/api/auth/register").send(account);
+const register = async (account) => {
+  const response = await request(app).post("/api/auth/register").send(account);
+  if (response.status === 201 && response.body.user?.id) createdUserIds.add(response.body.user.id);
+  return response;
+};
 const login = async (account) => request(app).post("/api/auth/login").send({ email: account.email, password: account.password });
-const createVehicle = async (quantity = 5) => {
+const createVehicle = async (quantity = 5, model) => {
   const response = await request(app)
     .post("/api/vehicles")
     .set("Authorization", `Bearer ${adminToken}`)
-    .send(vehiclePayload(quantity));
+    .send(vehiclePayload(quantity, model));
   expect(response.status).toBe(201);
+  createdVehicleIds.add(response.body.vehicle.id);
   return response.body.vehicle;
 };
 
 beforeAll(async () => {
   const registeredRegular = await register(regularUser);
   expect(registeredRegular.status).toBe(201);
+  regularUserId = registeredRegular.body.user.id;
 
   const regularRecord = await prisma.user.findUnique({ where: { email: regularUser.email } });
   expect(regularRecord.passwordHash).not.toBe(regularUser.password);
@@ -58,20 +75,38 @@ beforeAll(async () => {
 
   const registeredAdmin = await register(adminUser);
   expect(registeredAdmin.status).toBe(201);
+  const adminUserId = registeredAdmin.body.user.id;
   expect(registeredAdmin.body.user.role).toBe("USER");
-  await prisma.user.update({ where: { email: adminUser.email }, data: { role: "ADMIN" } });
+  await prisma.user.update({ where: { id: adminUserId }, data: { role: "ADMIN" } });
 
-  const [regularLogin, adminLogin] = await Promise.all([login(regularUser), login(adminUser)]);
+  const registeredOther = await register(otherUser);
+  expect(registeredOther.status).toBe(201);
+  otherUserId = registeredOther.body.user.id;
+
+  const [regularLogin, adminLogin, otherLogin] = await Promise.all([login(regularUser), login(adminUser), login(otherUser)]);
   expect(regularLogin.status).toBe(200);
   expect(adminLogin.status).toBe(200);
+  expect(otherLogin.status).toBe(200);
   expect(regularLogin.body.user).not.toHaveProperty("passwordHash");
   regularToken = regularLogin.body.token;
   adminToken = adminLogin.body.token;
+  otherToken = otherLogin.body.token;
   protectedVehicleId = (await createVehicle(3)).id;
 });
 
 afterAll(async () => {
-  await prisma.$disconnect();
+  try {
+    const userIds = [...createdUserIds];
+    const vehicleIds = [...createdVehicleIds];
+    const purchaseConditions = [];
+    if (userIds.length) purchaseConditions.push({ userId: { in: userIds } });
+    if (vehicleIds.length) purchaseConditions.push({ vehicleId: { in: vehicleIds } });
+    if (purchaseConditions.length) await prisma.purchase.deleteMany({ where: { OR: purchaseConditions } });
+    if (vehicleIds.length) await prisma.vehicle.deleteMany({ where: { id: { in: vehicleIds } } });
+    if (userIds.length) await prisma.user.deleteMany({ where: { id: { in: userIds } } });
+  } finally {
+    await prisma.$disconnect();
+  }
 });
 
 describe("dedicated PostgreSQL API integration", () => {
@@ -83,6 +118,8 @@ describe("dedicated PostgreSQL API integration", () => {
   test("issues and verifies JWTs on protected routes", async () => {
     expect((await request(app).post(`/api/vehicles/${protectedVehicleId}/purchases`).send({ quantity: 1 })).status).toBe(401);
     expect((await request(app).post(`/api/vehicles/${protectedVehicleId}/purchases`).set("Authorization", "Bearer invalid").send({ quantity: 1 })).status).toBe(401);
+    const expiredToken = jwt.sign({}, process.env.JWT_SECRET, { subject: regularUserId, expiresIn: -1 });
+    expect((await request(app).post(`/api/vehicles/${protectedVehicleId}/purchases`).set("Authorization", `Bearer ${expiredToken}`).send({ quantity: 1 })).status).toBe(401);
     const purchase = await request(app)
       .post(`/api/vehicles/${protectedVehicleId}/purchases`)
       .set("Authorization", `Bearer ${regularToken}`)
@@ -116,6 +153,20 @@ describe("dedicated PostgreSQL API integration", () => {
     const deleted = await request(app).delete(`/api/vehicles/${created.id}`).set("Authorization", `Bearer ${adminToken}`);
     expect(deleted.status).toBe(200);
     expect((await request(app).get(`/api/vehicles/${created.id}`)).status).toBe(404);
+  });
+
+  test("lists only this run's matching vehicles across pages", async () => {
+    const first = await createVehicle(2, `PageOne-${suffix}`);
+    const second = await createVehicle(4, `PageTwo-${suffix}`);
+    const query = `search=${encodeURIComponent(suffix)}&limit=1`;
+    const pageOne = await request(app).get(`/api/vehicles?${query}&page=1`);
+    const pageTwo = await request(app).get(`/api/vehicles?${query}&page=2`);
+
+    expect(pageOne.status).toBe(200);
+    expect(pageTwo.status).toBe(200);
+    expect(pageOne.body.pagination).toMatchObject({ page: 1, limit: 1, total: 2, pages: 2 });
+    expect(pageTwo.body.pagination).toMatchObject({ page: 2, limit: 1, total: 2, pages: 2 });
+    expect(new Set([pageOne.body.vehicles[0].id, pageTwo.body.vehicles[0].id])).toEqual(new Set([first.id, second.id]));
   });
 
   test("restocks stock atomically for admins only", async () => {
@@ -172,5 +223,40 @@ describe("dedicated PostgreSQL API integration", () => {
     expect(responses.filter((response) => response.status === 409)).toHaveLength(4);
     expect((await prisma.vehicle.findUnique({ where: { id: vehicle.id } })).quantity).toBe(0);
     expect(await prisma.purchase.count({ where: { vehicleId: vehicle.id } })).toBe(1);
+  });
+
+  test("returns empty purchase history, then paginates only the authenticated user's records", async () => {
+    const empty = await request(app).get("/api/purchases").set("Authorization", `Bearer ${otherToken}`);
+    expect(empty.status).toBe(200);
+    expect(empty.body).toMatchObject({ purchases: [], pagination: { page: 1, limit: 20, total: 0, pages: 0 } });
+
+    const ownVehicleOne = await createVehicle(5);
+    const ownVehicleTwo = await createVehicle(5);
+    const otherVehicle = await createVehicle(5);
+    const ownPurchaseOne = await request(app).post(`/api/vehicles/${ownVehicleOne.id}/purchases`).set("Authorization", `Bearer ${regularToken}`).send({ quantity: 1 });
+    const ownPurchaseTwo = await request(app).post(`/api/vehicles/${ownVehicleTwo.id}/purchases`).set("Authorization", `Bearer ${regularToken}`).send({ quantity: 2 });
+    const otherPurchase = await request(app).post(`/api/vehicles/${otherVehicle.id}/purchases`).set("Authorization", `Bearer ${otherToken}`).send({ quantity: 1 });
+    expect([ownPurchaseOne.status, ownPurchaseTwo.status, otherPurchase.status]).toEqual([201, 201, 201]);
+
+    const query = `userId=${encodeURIComponent(otherUserId)}&page=1&limit=1`;
+    const pageOne = await request(app).get(`/api/purchases?${query}`).set("Authorization", `Bearer ${regularToken}`);
+    const pageTwo = await request(app).get(`/api/purchases?${query.replace("page=1", "page=2")}`).set("Authorization", `Bearer ${regularToken}`);
+    expect(pageOne.status).toBe(200);
+    expect(pageTwo.status).toBe(200);
+    expect(pageOne.body.pagination).toMatchObject({ page: 1, limit: 1, total: 2, pages: 2 });
+    expect(pageTwo.body.pagination).toMatchObject({ page: 2, limit: 1, total: 2, pages: 2 });
+    const ownRecords = [...pageOne.body.purchases, ...pageTwo.body.purchases];
+    expect(ownRecords).toHaveLength(2);
+    expect(new Set(ownRecords.map((purchase) => purchase.vehicleId))).toEqual(new Set([ownVehicleOne.id, ownVehicleTwo.id]));
+    expect(ownRecords.every((purchase) => purchase.vehicleId !== otherVehicle.id && !("userId" in purchase))).toBe(true);
+    expect(ownRecords.map((purchase) => purchase.id)).toEqual(ownRecords.slice().sort((a, b) =>
+      Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id.localeCompare(a.id),
+    ).map((purchase) => purchase.id));
+    expect(ownRecords[0]).toHaveProperty("totalAmount");
+
+    const otherHistory = await request(app).get(`/api/purchases?userId=${encodeURIComponent(regularUserId)}`).set("Authorization", `Bearer ${otherToken}`);
+    expect(otherHistory.status).toBe(200);
+    expect(otherHistory.body.purchases).toHaveLength(1);
+    expect(otherHistory.body.purchases[0].vehicleId).toBe(otherVehicle.id);
   });
 });

@@ -20,23 +20,14 @@ const assertDedicatedTestDatabase = ({ requireDatabaseUrlMatch = false, printTar
   } catch {
     throw new Error("TEST_DATABASE_URL contains an invalid database name.");
   }
-  if (!databaseName || !/_test$/i.test(databaseName)) {
-    const authorizedExistingDatabase =
-      databaseName === "dealership_db" &&
-      process.env.ALLOW_EXISTING_DATABASE_TESTS === "dealership_db";
+  if (!/^dealership_.+_test$/i.test(databaseName)) {
+    throw new Error("TEST_DATABASE_URL must name a dedicated dealership_*_test database; development databases are not permitted.");
+  }
 
-    if (!authorizedExistingDatabase) {
-      throw new Error("The dedicated test database name must end in _test.");
-    }
-
-    const hostname = parsedUrl.hostname.toLowerCase();
-    const username = decodeURIComponent(parsedUrl.username);
-    if (!["localhost", "127.0.0.1", "::1"].includes(hostname) || parsedUrl.port !== "5432" || username !== "dealership_app") {
-      throw new Error("Authorized dealership_db tests require localhost:5432 and the dealership_app database user.");
-    }
-    if (process.env.DATABASE_URL !== testDatabaseUrl) {
-      throw new Error("Authorized dealership_db tests require DATABASE_URL to exactly match TEST_DATABASE_URL.");
-    }
+  const hostname = parsedUrl.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  const port = parsedUrl.port || "5432";
+  if (!["localhost", "127.0.0.1", "::1"].includes(hostname) || port !== "5432") {
+    throw new Error("TEST_DATABASE_URL must target local PostgreSQL on localhost:5432.");
   }
   if (process.env.CONFIRM_TEST_DATABASE !== databaseName) {
     throw new Error("Set CONFIRM_TEST_DATABASE to the exact test database name to confirm the target.");
@@ -46,9 +37,8 @@ const assertDedicatedTestDatabase = ({ requireDatabaseUrlMatch = false, printTar
   }
 
   if (printTarget) {
-    const label = databaseName === "dealership_db" ? "Explicitly authorized PostgreSQL test target" : "Dedicated PostgreSQL test target";
-    console.log(`${label}: ${parsedUrl.hostname}${parsedUrl.port ? `:${parsedUrl.port}` : ""}/${databaseName}`);
-    console.log("Integration tests do not reset or truncate. Test users and most vehicles/purchases persist; CRUD deletion is limited to its own vehicle.");
+    console.log(`Dedicated PostgreSQL test target: ${parsedUrl.hostname}${parsedUrl.port ? `:${parsedUrl.port}` : ""}/${databaseName}`);
+    console.log("Integration tests do not reset or truncate. They remove only purchases, users, and vehicles created by the current run.");
   }
   return { databaseName, testDatabaseUrl };
 };

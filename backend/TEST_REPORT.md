@@ -1,5 +1,31 @@
 # Backend Verification Report
 
+## Milestone 9 safe integration readiness (2026-10-25)
+
+- `npm test`: passed, 6 suites and 25 tests, using the in-memory Prisma mock.
+- `npm run db:validate`: passed; Prisma schema is valid.
+- Frontend `npm run build`: passed.
+- `git diff --check` and `git diff --cached --check`: passed.
+- `npm run test:integration`: stopped at the guard because `TEST_DATABASE_URL` is not configured; no database connection or write was attempted.
+- Readiness inspection found the configured backend target is PostgreSQL at `localhost:5432/dealership_db`; it was not contacted. No dedicated test URL or exact confirmation is configured. `pg_isready` found no server listening on local port 5432, so a dedicated database could not be independently identified or created.
+- The runner now accepts only local `dealership_*_test` targets on port 5432 and exact `CONFIRM_TEST_DATABASE` matches; the legacy `dealership_db` exception is removed. Integration fixtures are tracked and cleanup is limited to purchases, users, and vehicles created by the current run. These integration changes have not been exercised against PostgreSQL.
+- No database was changed. Existing database-backed results later in this report are historical and do not verify the updated integration suite or new purchase-history tests.
+
+## Milestone 10 safe verification automation (2026-10-25)
+
+- Added `npm run verify:safe` to run the non-database checks in one command. It excludes migrations and database-backed integration tests.
+- The command was run successfully: backend mock/unit suite (6 suites, 25 tests), Prisma validation, JavaScript syntax checks, frontend production build, and both Git diff checks passed.
+- `npm run test:integration` with test URL and confirmation explicitly unset exited at the guard with the expected missing-`TEST_DATABASE_URL` message. No database connection was attempted.
+- PostgreSQL clusters were stopped in the execution environment; starting the PostgreSQL 18 cluster required root or the cluster owner. No database was inspected, created, migrated, or modified.
+
+## Milestone 11 safe release review (2026-10-25)
+
+- `npm run verify:safe`: passed; 6 mock/unit suites and 25 tests, Prisma validation, syntax checks, frontend build, and Git diff checks passed. A separate frontend `npm run build` also passed.
+- The database guard suite passed (7 tests). `npm run test:integration` with test configuration unset exited before connecting because `TEST_DATABASE_URL` is required.
+- `npm audit --json` passed for both backend and frontend: 0 vulnerabilities in each dependency tree.
+- In the normal local execution context PostgreSQL 18 was online at `127.0.0.1:5432`; only `pg_isready` was used. No database connection, SQL query, migration, or write was made. The restricted workspace view reported the clusters down; no service operation was attempted during this review.
+- Updated backend documentation to remove stale statements about persistent integration fixtures and the retired `dealership_db` test exception, and made the future test-database example explicitly target loopback port 5432. The updated integration suite has still not been run against PostgreSQL.
+
 Run these commands from `backend/`.
 
 ## Post-fix verification (2026-10-25)
@@ -90,7 +116,7 @@ The user reports these later checks against the local development database; they
 
 These earlier reports did not verify admin CRUD, restocking, purchases, insufficient stock, transaction rollback, or PostgreSQL concurrency; the later integration run recorded above covers these cases.
 
-The opt-in database-backed suite is implemented at `tests/integration/api.test.js`. Its default target remains a dedicated `_test` database. The explicit authorized `dealership_db` path and restrictions are recorded above. The runner refuses a conflicting inherited `DATABASE_URL`, prints only the target host and database name, and does not reset or truncate tables. The CRUD test deletes only its own vehicle; other generated records persist.
+The database-backed suite is implemented at `tests/integration/api.test.js`. The historical Milestone 8 run used the then-authorized `dealership_db` exception described above; Milestone 9 removed that exception. The current runner accepts only a local `dealership_*_test` target with an exact confirmation and refuses conflicting `DATABASE_URL` values. It does not reset or truncate tables, and its cleanup deletes only purchases, vehicles, and users tracked as fixtures from the current run. The updated suite has not yet been verified against PostgreSQL.
 
 ## Security and dependency findings
 

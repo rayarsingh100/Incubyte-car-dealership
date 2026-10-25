@@ -38,9 +38,9 @@ The server loads `backend/.env`. Do not commit `.env` or share its values. Befor
 
 ## Verification results
 
-The results below distinguish the latest post-fix checks from the earlier database integration run. Full command history and caveats are in [backend/TEST_REPORT.md](backend/TEST_REPORT.md).
+The results below are dated verification snapshots. The newest safe checks and audit results are recorded in [backend/TEST_REPORT.md](backend/TEST_REPORT.md), alongside the earlier database integration run and its limitations.
 
-### Latest checks after the bcrypt login fix — 2026-10-25
+### Bcrypt-fix verification snapshot — 2026-10-25
 
 | Command or check | Result |
 | --- | --- |
@@ -56,7 +56,7 @@ Prisma Client generation passed in the earlier verification before the bcrypt-on
 
 ### Earlier PostgreSQL integration result — before the bcrypt login fix
 
-The guarded integration suite passed with 1 suite and 8 tests against the explicitly authorized local `dealership_db`. This result predates the login validation fix and the integration suite was not rerun afterward. The run did not reset or truncate data. Test-created records persist except for the vehicle deleted by its own CRUD test. Future integration runs should use a dedicated disposable database ending in `_test`.
+The guarded integration suite previously passed with 1 suite and 8 tests against the then-authorized local `dealership_db`. That historical run predates later fixes and left test records in that database. The current guard rejects `dealership_db`, and the integration suite now has fixture-specific cleanup. The updated suite has not yet been run against a dedicated disposable database.
 
 Unit tests use an in-memory Prisma mock and do not establish PostgreSQL behavior. Passing tests show the exercised scenarios passed; they do not prove the system is free of defects.
 
@@ -80,7 +80,7 @@ The source and recorded tests support these specific behaviors: public registrat
 
 ### Limitations and next improvements
 
-- The integration result is from before the bcrypt fix and used the explicitly authorized local database. Rerun the guarded suite against a dedicated disposable `_test` database before relying on post-fix PostgreSQL verification; integration tests leave most test records behind.
+- The historical integration result used `dealership_db` before later fixes. The updated guarded suite still needs a run against a separately verified dedicated disposable database.
 - Jest does not have dedicated tests for missing or short JWT configuration or startup refusal, although the application implements those checks.
 - The login rate limiter uses an in-memory per-process store. A multi-instance deployment needs a shared store and careful proxy configuration.
 - The available `backend/PROMPTS.md` is an AI-use summary, not raw session logs. Complete raw AI prompts and assistant-response logs were not found in the workspace. Recent prompts visible in this chat are not a complete project transcript.

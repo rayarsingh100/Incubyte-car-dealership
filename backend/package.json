@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest --runInBand --testPathIgnorePatterns=tests/integration",
+    "verify:safe": "npm test && npm run db:validate && node --check scripts/testDatabaseGuard.js && node --check scripts/runTestDatabase.js && node --check tests/testDatabaseGuard.test.js && node --check tests/integration/api.test.js && npm --prefix ../frontend run build && git -C .. diff --check && git -C .. diff --cached --check",
     "test:integration": "node scripts/runTestDatabase.js integration",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",

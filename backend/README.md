@@ -16,23 +16,25 @@ The server loads `backend/.env`. `DATABASE_URL` and `JWT_SECRET` are required fo
 
 ## Commands
 
-From `backend/`, run `npm test`, validate the Prisma schema with `npm run db:validate`, generate Prisma Client with `npm run db:generate`, check migration state with `npx prisma migrate status`, and apply checked-in migrations with `npm run db:migrate`.
+From `backend/`, run `npm run verify:safe` for the non-database regression checks: mocked unit tests (including database-guard tests), Prisma schema validation, JavaScript syntax checks, frontend production build, and Git diff checks. This command does not connect to PostgreSQL, run migrations, or execute database-backed tests. Separately, use `npm run db:generate` to generate Prisma Client, `npx prisma migrate status` to check migration state, and `npm run db:migrate` only when you intend to apply checked-in migrations to the configured database.
 
-`npm test` runs mocked Jest/Supertest unit tests. PostgreSQL integration tests run separately and require `TEST_DATABASE_URL` and an exact `CONFIRM_TEST_DATABASE` value. By default, the database name must end in `_test`; the runner refuses to fall back to `DATABASE_URL` and refuses when an inherited `DATABASE_URL` points elsewhere. An explicitly authorized exception is restricted to `dealership_db` on loopback port 5432, with database user `dealership_app`, and requires `ALLOW_EXISTING_DATABASE_TESTS=dealership_db` plus an exact `DATABASE_URL` match. This exception is for the specifically authorized local run only; it is not suitable for production. The runner prints the hostname and database name before connecting. Integration tests use unique records, never reset or truncate tables, and delete only a vehicle created by their CRUD test. Other test records remain in the target database.
+`npm test` runs mocked Jest/Supertest unit tests. PostgreSQL integration tests run separately and require `TEST_DATABASE_URL` plus an exact `CONFIRM_TEST_DATABASE` value. The target must be a local PostgreSQL database on port 5432 named `dealership_*_test`; the runner rejects `dealership_db`, remote hosts, missing confirmation, and conflicting `DATABASE_URL` values. It never falls back to `DATABASE_URL` and prints only the target host and database name before connecting. The suite does not reset or truncate tables. It tracks its unique user and vehicle IDs, deletes only purchases tied to those fixtures, then removes only those users and vehicles.
 
-To configure the dedicated database, create an empty PostgreSQL database whose name ends in `_test`, then enter its URL in your shell without placing the credential in shell history:
+To configure a new dedicated database, first create it with a name reserved for this suite. `createdb` fails if that database already exists, so do not use a pre-existing database unless you have independently confirmed that it is dedicated and disposable. Verify the selected identity before migration:
 
 ```sh
-read -rsp 'Dedicated test database URL: ' TEST_DATABASE_URL
+createdb -h 127.0.0.1 -p 5432 dealership_integration_test || exit 1
+test "$(psql -h 127.0.0.1 -p 5432 -d dealership_integration_test -Atqc 'SELECT current_database()')" = dealership_integration_test || exit 1
+read -rsp 'Dedicated local test database URL: ' TEST_DATABASE_URL
 export TEST_DATABASE_URL
 printf '\n'
-export CONFIRM_TEST_DATABASE=dealership_test
+export CONFIRM_TEST_DATABASE=dealership_integration_test
 unset DATABASE_URL
 npm run db:migrate:test
 npm run test:integration
 ```
 
-Change `dealership_test` to the exact database name you created. The example assumes local PostgreSQL authentication is configured. Never use the development database URL for these commands. See `TEST_REPORT.md` for completed checks and limitations.
+The confirmation value must exactly match the database name. The example assumes local PostgreSQL authentication is configured. Never use the development database URL for these commands. Integration tests remove only records tied to their unique fixtures; they never reset or truncate the database. See `TEST_REPORT.md` for completed checks and limitations.
 
 ## API
 
@@ -69,7 +71,7 @@ Purchase history accepts `page` (default 1) and `limit` (default 20, maximum 100
 
 Vehicle create requires exactly these fields: `make`, `model`, `category`, `price`, and `quantity`. Patch accepts one or more of the same fields; unknown fields are rejected. `make`, `model`, and `category` must be strings, are trimmed, and must contain 1–100 characters. `price` must be a JSON number greater than zero, no greater than `9999999999.99`, with at most two decimal places. Create/update `quantity` must be an integer from 0 through `2147483647`; purchase/restock `quantity` must be an integer from 1 through `2147483647`, and total stock cannot exceed `2147483647`. IDs must be UUIDs.
 
-For admin testing, use the guarded integration suite on a separate disposable database ending in `_test`. It registers unique test accounts and elevates only its newly registered test account inside that database. Do not change the role of an existing development account. The suite leaves test records in the disposable database, except that its CRUD test deletes only the vehicle it created.
+For admin testing, use the guarded integration suite on a separate disposable `dealership_*_test` database. It registers unique test accounts and elevates only its newly registered test account inside that database. Do not change the role of an existing development account. After the run, it deletes only purchases, vehicles, and users identified as fixtures created by that run; it never resets or truncates tables.
 
 List query parameters include `page` (default 1), `limit` (default 20, maximum 100), `search` (matches make/model/category), exact `make`, `model`, and `category`, `minPrice`, `maxPrice`, and `inStock=true|false`.
 
